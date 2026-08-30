@@ -1,0 +1,16 @@
+{
+  "kind": "card",
+  "id": "exworld:defend",
+  "skill": "exworld:defend",
+  "type": "skill",
+  "name_key": "skill.exworld.defend",
+  "description_key": "skill.exworld.defend.description",
+  "icon": "exworld:textures/gui/skill/defend.png",
+  "rarity": "common",
+  "tags": ["skill"],
+  "effects": { "block": 5 },
+  "stars": [
+    { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 },
+    { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 }
+  ]
+}

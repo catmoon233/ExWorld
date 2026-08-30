@@ -1,0 +1,64 @@
+package net.exmo.exworld.client;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.exmo.exworld.client.battle.BattleClient;
+import net.exmo.exworld.world.model.ChunkGroupBounds;
+import net.exmo.exworld.world.model.ChunkGroupShape;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+
+/** Renders the outer edge of the active chunk group, never individual Minecraft chunk edges. */
+public final class WorldBoundaryRenderer {
+    private WorldBoundaryRenderer() {}
+
+    public static void render(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+        if (BattleClient.active()) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null || minecraft.level.dimension() != Level.OVERWORLD) return;
+        if (ChunkGroupRenderCuller.bypassBoundary()) return;
+        ChunkGroupShape shape = ClientChunkGroupState.active();
+        if (shape == null || !shape.containsPosition(minecraft.player.getX(), minecraft.player.getZ())) {
+            int groupChunks = net.exmo.exworld.world.model.WorldDimensions.DEFAULT_GROUP_CHUNKS;
+            ChunkGroupBounds bounds = ChunkGroupBounds.containing(minecraft.player.getX(), minecraft.player.getZ(), groupChunks);
+            shape = new ChunkGroupShape("fallback", groupChunks, java.util.List.of(
+                    new ChunkGroupShape.Cell(bounds.groupX(), bounds.groupZ())));
+        }
+        Vec3 camera = event.getCamera().getPosition();
+        PoseStack pose = event.getPoseStack();
+        pose.pushPose();
+        pose.translate(-camera.x, -camera.y, -camera.z);
+        double bottom = minecraft.level.getMinBuildHeight();
+        double top = minecraft.level.getMaxBuildHeight();
+        double thickness = 0.28;
+
+        // BufferSource may reuse one BufferBuilder for non-fixed render types. Finish one type before requesting the
+        // next, otherwise getBuffer(debugFilledBox) can close the still-referenced lines consumer.
+        VertexConsumer mask = minecraft.renderBuffers().bufferSource().getBuffer(RenderType.debugFilledBox());
+        for (ChunkGroupShape.Cell cell : shape.boundaryCells()) {
+            ChunkGroupBounds bounds = ChunkGroupBounds.forGroup(cell.x(), cell.z(), shape.groupChunks());
+            int edges = shape.boundaryMask(cell);
+            if ((edges & ChunkGroupShape.WEST) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
+                    bounds.minX() + thickness, top, bounds.maxZ());
+            if ((edges & ChunkGroupShape.EAST) != 0) addWall(pose, mask, bounds.maxX() - thickness, bottom, bounds.minZ(),
+                    bounds.maxX(), top, bounds.maxZ());
+            if ((edges & ChunkGroupShape.NORTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
+                    bounds.maxX(), top, bounds.minZ() + thickness);
+            if ((edges & ChunkGroupShape.SOUTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.maxZ() - thickness,
+                    bounds.maxX(), top, bounds.maxZ());
+        }
+        minecraft.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
+        pose.popPose();
+    }
+
+    private static void addWall(PoseStack pose, VertexConsumer consumer, double minX, double minY, double minZ,
+                                double maxX, double maxY, double maxZ) {
+        LevelRenderer.addChainedFilledBoxVertices(pose, consumer, minX, minY, minZ, maxX, maxY, maxZ,
+                0.88F, 0.89F, 0.90F, 0.56F);
+    }
+}

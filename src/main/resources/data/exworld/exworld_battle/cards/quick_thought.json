@@ -1,0 +1,16 @@
+{
+  "kind": "card",
+  "id": "exworld:quick_thought",
+  "skill": "exworld:quick_thought",
+  "type": "skill",
+  "name_key": "skill.exworld.quick_thought",
+  "description_key": "skill.exworld.quick_thought.description",
+  "icon": "exworld:textures/gui/skill/draw.png",
+  "rarity": "common",
+  "tags": ["skill"],
+  "effects": { "draw": 2 },
+  "stars": [
+    { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 },
+    { "mana_cost": 1, "range": 0 }, { "mana_cost": 1, "range": 0 }
+  ]
+}

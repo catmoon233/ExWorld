@@ -1,0 +1,12 @@
+{
+  "type": "exworld:dungeon",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:plains",
+      "lakes": false,
+      "features": false,
+      "layers": [{ "height": 1, "block": "minecraft:stone" }, { "height": 255, "block": "minecraft:air" }]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "type": "square-textured",
+  "properties": {
+    "priority": 100,
+    "fade": { "alwaysOn": true },
+    "transitionInDuration": 2,
+    "transitionOutDuration": 8,
+    "inThickFog": true
+  },
+  "conditions": { "dimensions": ["exworld:battle", "exworld:dungeon"] },
+  "textures": {
+    "north": "exworld:textures/skybox/battle/desert/north.png",
+    "south": "exworld:textures/skybox/battle/desert/south.png",
+    "east": "exworld:textures/skybox/battle/desert/east.png",
+    "west": "exworld:textures/skybox/battle/desert/west.png",
+    "top": "exworld:textures/skybox/battle/desert/top.png",
+    "bottom": "exworld:textures/skybox/battle/desert/bottom.png"
+  }
+}

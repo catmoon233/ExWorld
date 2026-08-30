@@ -1,0 +1,17 @@
+{
+  "kind": "card",
+  "id": "exworld:iron_will",
+  "skill": "exworld:iron_will",
+  "type": "power",
+  "name_key": "skill.exworld.iron_will",
+  "description_key": "skill.exworld.iron_will.description",
+  "icon": "exworld:textures/gui/skill/iron_will.png",
+  "rarity": "uncommon",
+  "tags": ["power", "exhaust"],
+  "keywords": ["exhaust"],
+  "effects": { "status_strength": 1 },
+  "stars": [
+    { "mana_cost": 2, "range": 0 }, { "mana_cost": 2, "range": 0 }, { "mana_cost": 2, "range": 0 },
+    { "mana_cost": 2, "range": 0 }, { "mana_cost": 2, "range": 0 }
+  ]
+}

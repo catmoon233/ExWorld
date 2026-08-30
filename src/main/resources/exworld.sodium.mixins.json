@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.exmo.exworld.mixin.client.sodium",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "SodiumOcclusionCullerMixin",
+    "SodiumRenderSectionAccessor",
+    "SodiumRenderSectionManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

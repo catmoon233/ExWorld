@@ -1,0 +1,40 @@
+{
+  "id": "exworld:welcome_journey",
+  "kind": "main",
+  "title_key": "quest.exworld.welcome_journey.title",
+  "description_key": "quest.exworld.welcome_journey.description",
+  "entry": "find_anchor",
+  "nodes": [
+    {
+      "id": "find_anchor",
+      "title_key": "quest.exworld.welcome_journey.find_anchor",
+      "description_key": "quest.exworld.welcome_journey.find_anchor.description",
+      "objectives": [{"type":"block_interact", "target":"exworld:travel_anchor", "amount":1}],
+      "rewards": [{"type":"resource","id":"exworld:gold","amount":25}],
+      "next": ["choose_path"]
+    },
+    {
+      "id": "choose_path",
+      "title_key": "quest.exworld.welcome_journey.choose_path",
+      "description_key": "quest.exworld.welcome_journey.choose_path.description",
+      "objectives": [],
+      "next": ["wanderer", "warden"]
+    },
+    {
+      "id": "wanderer",
+      "title_key": "quest.exworld.welcome_journey.wanderer",
+      "description_key": "quest.exworld.welcome_journey.wanderer.description",
+      "objectives": [{"type":"inventory","target":"minecraft:bread","amount":1}],
+      "rewards": [{"type":"item","id":"minecraft:torch","amount":16}],
+      "next": []
+    },
+    {
+      "id": "warden",
+      "title_key": "quest.exworld.welcome_journey.warden",
+      "description_key": "quest.exworld.welcome_journey.warden.description",
+      "objectives": [{"type":"kill","target":"minecraft:zombie","amount":1}],
+      "rewards": [{"type":"resource","id":"exworld:gold","amount":50}],
+      "next": []
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "skill",
+  "id": "exworld:guarded_strike",
+  "name_key": "skill.exworld.guarded_strike",
+  "icon": "exworld:textures/gui/skill/guarded_strike.png",
+  "adapter": "exworld",
+  "mana_cost": 15,
+  "range": 1,
+  "target_type": "enemy",
+  "requires_line_of_sight": true,
+  "power": 12,
+  "level": 1
+}

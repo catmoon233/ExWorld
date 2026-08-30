@@ -1,0 +1,9 @@
+{
+  "kind": "arena",
+  "id": "exworld:flat_18",
+  "width": 27,
+  "depth": 27,
+  "base_y": 64,
+  "max_step_height": 1,
+  "blocked": []
+}

@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.exmo.exworld.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "DimensionTypeMixin"
+  ],
+  "client": [
+    "client.BlockRenderDispatcherMixin",
+    "client.CameraMixin",
+    "client.GameRendererAccessor",
+    "client.GameRendererMixin",
+    "client.EntityRenderDispatcherMixin",
+    "client.MinecraftBattleGlowMixin",
+    "client.EntityBattleGlowColorMixin",
+    "client.KeyboardInputMixin",
+    "client.MouseHandlerMixin",
+    "client.SoundEngineMixin",
+    "client.SectionOcclusionGraphMixin",
+    "client.SpellBarOverlayMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

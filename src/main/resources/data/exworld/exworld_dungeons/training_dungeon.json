@@ -1,0 +1,14 @@
+{
+  "id": "exworld:training_dungeon",
+  "name_key": "dungeon.exworld.training",
+  "slot_size": 512,
+  "rooms": [
+    { "id": "entrance", "type": "entrance", "width": 32, "depth": 24, "floor_y": 64, "entrance": [16, 0], "exit": [16, 23] },
+    { "id": "combat_01", "type": "combat", "width": 32, "depth": 24, "floor_y": 64, "arena": "exworld:flat_18", "alert_radius": 10, "entrance": [16, 0], "exit": [16, 23], "enemy_spawns": [[16, 12]],
+      "enemies": [{ "id": "zombie", "entity_type": "minecraft:zombie", "name": "训练僵尸", "max_health": 40, "max_mana": 60, "initiative": 10, "movement_points": 4, "initial_hand_size": 3, "deck": ["exworld:debug_card_01", "exworld:debug_card_02"] }] },
+    { "id": "treasure_01", "type": "treasure", "width": 32, "depth": 24, "floor_y": 64, "gold": 100, "entrance": [16, 0], "exit": [16, 23] },
+    { "id": "boss_01", "type": "boss", "width": 32, "depth": 24, "floor_y": 64, "arena": "exworld:flat_18", "alert_radius": 12, "entrance": [16, 0], "exit": [16, 23], "enemy_spawns": [[16, 12]],
+      "enemies": [{ "id": "boss_zombie", "entity_type": "minecraft:zombie", "name": "副本领主", "max_health": 120, "max_mana": 100, "initiative": 25, "movement_points": 5, "initial_hand_size": 4, "deck": ["exworld:debug_card_01", "exworld:debug_card_02", "exworld:debug_card_05", "exworld:debug_card_06"] }] },
+    { "id": "exit", "type": "exit", "width": 32, "depth": 24, "floor_y": 64 }
+  ]
+}

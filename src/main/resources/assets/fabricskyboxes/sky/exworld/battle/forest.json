@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "type": "square-textured",
+  "properties": {
+    "priority": 100,
+    "fade": { "alwaysOn": true },
+    "transitionInDuration": 2,
+    "transitionOutDuration": 8,
+    "inThickFog": true
+  },
+  "conditions": { "dimensions": ["exworld:battle", "exworld:dungeon"] },
+  "textures": {
+    "north": "exworld:textures/skybox/battle/forest/north.png",
+    "south": "exworld:textures/skybox/battle/forest/south.png",
+    "east": "exworld:textures/skybox/battle/forest/east.png",
+    "west": "exworld:textures/skybox/battle/forest/west.png",
+    "top": "exworld:textures/skybox/battle/forest/top.png",
+    "bottom": "exworld:textures/skybox/battle/forest/bottom.png"
+  }
+}
