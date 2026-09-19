@@ -12,6 +12,7 @@ import net.exmo.exworld.battle.attribute.BattleAttributes;
 import net.exmo.exworld.dungeon.DungeonSystem;
 import net.exmo.exworld.progress.PlayerProgressSystem;
 import net.exmo.exworld.ship.ShipSystem;
+import net.exmo.exworld.inventory.InventorySystem;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -38,6 +39,7 @@ public final class Exworld {
         DungeonSystem.registerEvents();
         PlayerProgressSystem.registerEvents();
         ShipSystem.registerEvents();
+        InventorySystem.registerEvents();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldMapClient.register(modBus);
         }

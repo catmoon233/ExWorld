@@ -77,6 +77,13 @@ ordering="NONE"
 side="BOTH"
 
 [[dependencies."${mod_id}"]]
+modId="exmodifier"
+type="required"
+versionRange="[1.0-SNAPSHOT,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies."${mod_id}"]]
 modId="irons_spellbooks"
 type="required"
 versionRange="[1.21.1,)"

@@ -38,8 +38,10 @@ public final class MinecraftBattleItemAccess implements BattleItemAccess {
         if (actor.itemUsesRemaining() <= 0) return "battle.command.item_limit";
         // Only the 36 main-inventory slots can be projected into the main hand.
         // Armor/offhand indices are not consumable battle inventory slots.
-        if (command.inventorySlot() < 0 || command.inventorySlot() >= 36) return "battle.command.item_missing";
-        ItemStack stack = player.getInventory().getItem(command.inventorySlot());
+        ItemStack stack;
+        if (command.inventorySlot() >= 100) stack = net.exmo.exworld.inventory.PlayerBackpack.of(player).grid(command.inventorySlot() - 100);
+        else if (command.inventorySlot() < 0 || command.inventorySlot() >= 36) return "battle.command.item_missing";
+        else stack = player.getInventory().getItem(command.inventorySlot());
         String itemId = itemId(stack);
         if (stack.isEmpty() || !itemId.equals(command.itemId())) return "battle.command.item_missing";
         if (session.actionBusy(actor.id())) return "battle.command.actor_busy";
@@ -143,13 +145,18 @@ public final class MinecraftBattleItemAccess implements BattleItemAccess {
         ServerPlayer player = net.exmo.exworld.battle.BattleSystem.player(actor.playerId());
         if (player == null) return List.of();
         List<BattleSnapshot.ItemView> result = new ArrayList<>();
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i); if (stack.isEmpty()) continue;
+        net.exmo.exworld.inventory.PlayerBackpack backpack = net.exmo.exworld.inventory.PlayerBackpack.of(player);
+        for (int i = 0; i < 36; i++) {
+            ItemStack stack = player.getInventory().getItem(i); if (stack.isEmpty()) continue;
             BattleItemAdapter adapter = registry.find(stack).orElse(null);
-            if (i >= 36 || adapter == null || actor.itemUsesRemaining() <= 0) continue;
-            result.add(new BattleSnapshot.ItemView(i, itemId(stack), stack.getHoverName().getString(), stack.getCount(), true,
-                    adapter.targetType()));
+            if (adapter == null || actor.itemUsesRemaining() <= 0) continue;
+            result.add(new BattleSnapshot.ItemView(i, itemId(stack), stack.getHoverName().getString(), stack.getCount(), true, adapter.targetType()));
+        }
+        for (int i = 27; i < 54; i++) {
+            ItemStack stack = backpack.grid(i); if (stack.isEmpty()) continue;
+            BattleItemAdapter adapter = registry.find(stack).orElse(null);
+            if (adapter == null || actor.itemUsesRemaining() <= 0) continue;
+            result.add(new BattleSnapshot.ItemView(100 + i, itemId(stack), stack.getHoverName().getString(), stack.getCount(), true, adapter.targetType()));
         }
         return List.copyOf(result);
     }
@@ -160,8 +167,8 @@ public final class MinecraftBattleItemAccess implements BattleItemAccess {
         if (player == null) return List.of();
         List<BattleSnapshot.WeaponSlotView> result = new ArrayList<>();
         for (int slot = 1; slot <= 2; slot++) {
-            String id = actor.weaponItem(slot); int index = findItem(player.getInventory(), id);
-            ItemStack stack = index < 0 ? ItemStack.EMPTY : player.getInventory().getItem(index);
+            ItemStack stack = net.exmo.exworld.inventory.PlayerBackpack.of(player).weapon(slot - 1);
+            String id = itemId(stack); int index = stack.isEmpty() ? -1 : 0;
             result.add(new BattleSnapshot.WeaponSlotView(slot, id, stack.isEmpty() ? id : stack.getHoverName().getString(),
                     index >= 0, session.passiveEngine().passiveId(id), session.passiveEngine().passiveProgress(id, actor)));
         }

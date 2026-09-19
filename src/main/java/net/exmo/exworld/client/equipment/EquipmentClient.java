@@ -20,7 +20,7 @@ public final class EquipmentClient {
     private EquipmentClient() {}
 
     public static void register() {
-        NeoForge.EVENT_BUS.addListener(EquipmentClient::middleClickInventory);
+        // Weapon rails are edited in the custom backpack UI.
     }
 
     public static void install(net.exmo.exworld.network.EquipmentSnapshotPayload payload) {

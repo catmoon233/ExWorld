@@ -7,6 +7,8 @@ import net.exmo.exworld.content.block.DungeonEntranceBlockEntity;
 import net.exmo.exworld.content.block.ShipCoreBlock;
 import net.exmo.exworld.content.block.ShipHelmBlock;
 import net.exmo.exworld.content.item.ShipToolItem;
+import net.exmo.exworld.content.item.StorageCoreItem;
+import net.exmo.exworld.inventory.InventoryRegistries;
 import net.exmo.exworld.ship.entity.ShipEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -55,6 +57,8 @@ public final class ExWorldContent {
     /** Example custom battle consumable. Its battle behaviour is registered by BattleItemRegistry, not by the item class. */
     public static final DeferredItem<Item> BATTLE_ELIXIR = ITEMS.register("battle_elixir",
             () -> new Item(new Item.Properties().stacksTo(16)));
+    public static final DeferredItem<StorageCoreItem> BASIC_STORAGE_CORE = ITEMS.register("basic_storage_core",
+            () -> new StorageCoreItem(new Item.Properties().stacksTo(1), 27));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DungeonEntranceBlockEntity>> DUNGEON_ENTRANCE_ENTITY = BLOCK_ENTITIES.register("dungeon_entrance",
             () -> BlockEntityType.Builder.of(DungeonEntranceBlockEntity::new, DUNGEON_ENTRANCE.get()).build(null));
     public static final DeferredHolder<EntityType<?>, EntityType<ShipEntity>> SHIP = ENTITIES.register("ship",
@@ -67,5 +71,6 @@ public final class ExWorldContent {
         ITEMS.register(bus);
         BLOCK_ENTITIES.register(bus);
         ENTITIES.register(bus);
+        InventoryRegistries.register(bus);
     }
 }

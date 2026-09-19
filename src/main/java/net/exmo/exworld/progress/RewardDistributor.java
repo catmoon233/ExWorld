@@ -20,7 +20,7 @@ public final class RewardDistributor {
                 case EXPERIENCE -> { if (vault.awardOnce(player.getServer(), player.getUUID(), id, PlayerResourceVault.GOLD, 0)) player.giveExperiencePoints(reward.amount()); }
                 case CARD -> { if (vault.awardOnce(player.getServer(), player.getUUID(), id, PlayerResourceVault.GOLD, 0)) BattleSystem.playerCards().grant(player.getServer(), player.getUUID(), reward.id().toString(), reward.amount()); }
                 case ACTION -> { if (vault.awardOnce(player.getServer(), player.getUUID(), id, PlayerResourceVault.GOLD, 0) && reward.id().getNamespace().equals("exworld") && reward.id().getPath().equals("grant_quest")) quests.grant(player, ResourceLocation.parse(reward.actionValue()), "reward:" + source); }
-                case ITEM -> { if (!vault.awardOnce(player.getServer(), player.getUUID(), id, PlayerResourceVault.GOLD, 0)) continue; var item = BuiltInRegistries.ITEM.get(reward.id()); ItemStack stack = new ItemStack(item, reward.amount()); if (!player.getInventory().add(stack)) overflow.add(stack.copy()); }
+                case ITEM -> { if (!vault.awardOnce(player.getServer(), player.getUUID(), id, PlayerResourceVault.GOLD, 0)) continue; var item = BuiltInRegistries.ITEM.get(reward.id()); ItemStack stack = new ItemStack(item, reward.amount()); if (!net.exmo.exworld.inventory.PlayerBackpack.of(player).admit(stack)) overflow.add(stack.copy()); }
             }
         }
         if (!overflow.isEmpty()) mail(player, source, subject, overflow);
@@ -30,7 +30,7 @@ public final class RewardDistributor {
     }
     public boolean claim(ServerPlayer player, UUID messageId) {
         PlayerProgress state = vault.state(player.getServer(), player.getUUID()); MailboxMessage message = state.mailbox.stream().filter(value -> value.id().equals(messageId)).findFirst().orElse(null); if (message == null) return false;
-        Iterator<ItemStack> it = message.attachments().iterator(); while (it.hasNext()) { ItemStack stack = it.next(); if (player.getInventory().add(stack)) it.remove(); }
+        Iterator<ItemStack> it = message.attachments().iterator(); while (it.hasNext()) { ItemStack stack = it.next(); if (net.exmo.exworld.inventory.PlayerBackpack.of(player).admit(stack)) it.remove(); }
         message.read(true); if (message.attachments().isEmpty()) state.mailbox.remove(message); vault.saved(player.getServer()).changed(); return true;
     }
 }

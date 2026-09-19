@@ -34,6 +34,7 @@ import net.exmo.exworld.network.CardCollectionActionPayload;
 import net.exmo.exworld.client.party.PartyHud;
 import net.exmo.exworld.client.voice.VoiceCastAddonCompat;
 import net.exmo.exworld.client.equipment.EquipmentClient;
+import net.exmo.exworld.client.inventory.InventoryClient;
 import net.exmo.exworld.client.quest.QuestClient;
 import net.exmo.exworld.client.quest.QuestHud;
 import net.exmo.exworld.client.quest.QuestNavigationRenderer;
@@ -62,6 +63,7 @@ public final class WorldMapClient {
                 (graphics, delta) -> AdvancedCameraDirector.renderOverlay(graphics)));
         BattleClient.register();
         EquipmentClient.register();
+        InventoryClient.register(modBus);
         VoiceCastAddonCompat.register(modBus);
         ShipClient.register(modBus);
         ExWorldTooltips.register();

@@ -56,6 +56,9 @@ public final class Combatant {
     private int strengthLevel = 1;
     private double weaponAttack;
     private WeaponFamily weaponFamily = WeaponFamily.NONE;
+    private List<String> modifierEntryIds = List.of();
+    private List<String> modifierAttributes = List.of();
+    private List<String> elementIds = List.of();
     private int dodgeDx;
     private int dodgeDz;
     private int interceptDx;
@@ -184,6 +187,14 @@ public final class Combatant {
     public void setWeaponAttack(double value) { weaponAttack = Math.max(0, value); }
     public WeaponFamily weaponFamily() { return weaponFamily; }
     public void setWeaponFamily(WeaponFamily family) { weaponFamily = family == null ? WeaponFamily.NONE : family; }
+    public void setModifierSnapshot(List<String> entryIds, List<String> attributes) {
+        modifierEntryIds = entryIds == null ? List.of() : List.copyOf(entryIds);
+        modifierAttributes = attributes == null ? List.of() : List.copyOf(attributes);
+    }
+    public List<String> modifierEntryIds() { return modifierEntryIds; }
+    public List<String> modifierAttributes() { return modifierAttributes; }
+    public void setElementSnapshot(List<String> ids) { elementIds = ids == null ? List.of() : List.copyOf(ids); }
+    public List<String> elementIds() { return elementIds; }
     public int dodgeDx() { return dodgeDx; }
     public int dodgeDz() { return dodgeDz; }
     public void setDodgeDirection(int dx, int dz) { dodgeDx = Integer.signum(dx); dodgeDz = Integer.signum(dz); }

@@ -32,7 +32,10 @@ public final class ShipUpgradeScreen extends Screen {
             variants.put(variantIds.get(i), ShipNbtCodec.decodeHull(variantHulls.get(i)));
         }
     }
+    @Override
+    public void renderBackground(GuiGraphics p_283688_, int p_296369_, int p_296477_, float p_294317_) {
 
+    }
     @Override
     protected void init() {
         int y = 48;

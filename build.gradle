@@ -19,6 +19,14 @@ repositories {
         url = "https://www.cursemaven.com"
         content { includeGroup "curse.maven" }
     }
+    maven {
+        name = "Jared's maven"
+        url = "https://maven.blamejared.com/"
+    }
+    maven {
+        name = "ModMaven"
+        url = "https://modmaven.dev"
+    }
 }
 
 base {
@@ -86,12 +94,11 @@ neoForge {
     }
 
     mods {
-        // define mod <-> source bindings
-        // these are used to tell the game which sources are for which mod
-        // mostly optional in a single mod project
-        // but multi mod projects should define one per mod
         "${mod_id}" {
             sourceSet(sourceSets.main)
+        }
+        exmodifier {
+            sourceSet(project(':exmodifier').sourceSets.main)
         }
     }
 }
@@ -105,6 +112,7 @@ sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 
 
 dependencies {
+    implementation project(':exmodifier')
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -118,6 +126,8 @@ dependencies {
     // ExWorld publishes its authoritative battle effects through StylizedDamage's packet API.
     // Keep the mod as a separate JAR; this dependency only adds it to compile/dev runtime classpaths.
     implementation files("libs/stylizeddamage-1211.2.9-fix.jar")
+
+
     // Optional client-only compatibility surface; ExWorld uses reflection and does not bundle it.
     compileOnly files("libs/voicecastaddon-1.0.2.jar")
     // Optional client-side integration. The bridge is loaded reflectively so ExWorld also runs
@@ -127,6 +137,7 @@ dependencies {
     compileOnly "net.caffeinemc:sodium-neoforge-api:0.8.13-beta.1+mc1.21.1"
     // The Maven `sodium-neoforge-mod` artifact is intentionally unwrapped. Do not put it on the
     // NeoForge runtime beside the full distribution JAR; their two JPMS modules export the same packages.
+    runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
@@ -362,6 +373,12 @@ tasks.register('playerProgressPersistenceTest', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.progress.PlayerProgressPersistenceTestHarness'
 }
+tasks.register('exModifierBridgeTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.equipment.ExModifierBridgeTestHarness'
+}
+
 
 tasks.register('shipHullCodecTest', JavaExec) {
     dependsOn testClasses
@@ -391,4 +408,42 @@ tasks.register('shipTempleTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.ship.ShipTemplatesTestHarness'
+}
+tasks.register('tooltipLayoutTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.tooltip.TooltipLayoutTestHarness'
+}
+
+tasks.register('vanillaLineFilterTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.tooltip.VanillaLineFilterTestHarness'
+}
+
+tasks.register('exModifierTooltipModelTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.tooltip.ExModifierTooltipModelTestHarness'
+}
+
+tasks.register('inventoryGridTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.inventory.InventoryGridTestHarness'
+}
+tasks.register('stackingRulesTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.inventory.StackingRulesTestHarness'
+}
+tasks.register('storageCoreCapacityTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.inventory.StorageCoreCapacityTestHarness'
+}
+tasks.register('qualityChromeTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.tooltip.QualityChromeTestHarness'
 }

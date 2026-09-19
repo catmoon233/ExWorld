@@ -228,18 +228,19 @@ public final class BattleSystem {
         for (ServerPlayer player : players) {
             Combatant actor = session.combatant(player.getUUID()).orElse(null);
             if (actor == null) continue;
-            PlayerEquipmentSavedData.Slots slots = PLAYER_EQUIPMENT.slots(player.getServer(), player.getUUID());
+            net.exmo.exworld.inventory.PlayerBackpack backpack = net.exmo.exworld.inventory.PlayerBackpack.of(player);
             int active = 0;
             String held = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString();
-            if (held.equals(slots.first())) active = 1;
-            else if (held.equals(slots.second())) active = 2;
-            if (initializeItemQuota) actor.configureEquipment(slots.first(), slots.second(), active);
+            String first = net.exmo.exworld.inventory.ItemStackOps.id(backpack.weapon(0)); String second = net.exmo.exworld.inventory.ItemStackOps.id(backpack.weapon(1)); if (held.equals(first)) active = 1;
+            else if (held.equals(second)) active = 2;
+            if (initializeItemQuota) actor.configureEquipment(first, second, active);
             BATTLE_ITEMS.autoEquipWeaponOne(session, actor, player);
             String heldItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString();
             actor.setWeaponFamily(net.exmo.exworld.battle.weapon.WeaponFamily.of(heldItem));
             actor.setStrengthLevel(Math.max(1, (int) Math.round(player.getAttributeValue(BattleAttributes.STRENGTH_LEVEL))));
             actor.setWeaponAttack(actor.weaponFamily() == net.exmo.exworld.battle.weapon.WeaponFamily.NONE
                     ? 0 : Math.max(0, player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)));
+            net.exmo.exworld.equipment.ExModifierBattleBridge.apply(actor, player);
             if (initializeItemQuota) {
                 double configured = player.getAttributeValue(BattleAttributes.ITEM_USES_PER_PHASE);
                 actor.setItemUseLimit((int) Math.max(0, Math.floor(configured)));
@@ -279,10 +280,10 @@ public final class BattleSystem {
         if (payload.action() != EquipmentActionPayload.Action.REQUEST && isParticipating(player.getUUID())) return;
         switch (payload.action()) {
             case REQUEST -> { }
-            case SET -> PLAYER_EQUIPMENT.set(player, payload.weaponSlot(), payload.inventorySlot());
-            case CLEAR -> PLAYER_EQUIPMENT.clear(player, payload.weaponSlot());
+            case SET -> { var pack = net.exmo.exworld.inventory.PlayerBackpack.of(player); net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(payload.inventorySlot()); if (!stack.isEmpty() && payload.weaponSlot() >= 1 && payload.weaponSlot() <= 2) pack.data().setWeapon(payload.weaponSlot() - 1, stack.copy()); }
+            case CLEAR -> { if (payload.weaponSlot() >= 1 && payload.weaponSlot() <= 2) net.exmo.exworld.inventory.PlayerBackpack.of(player).data().setWeapon(payload.weaponSlot() - 1, net.minecraft.world.item.ItemStack.EMPTY); }
         }
-        BattleNetwork.sendEquipment(player, PLAYER_EQUIPMENT.slots(player.getServer(), player.getUUID()));
+        var pack = net.exmo.exworld.inventory.PlayerBackpack.of(player); BattleNetwork.sendEquipment(player, net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(0)), net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(1)));
     }
     public static void cardCollectionAction(ServerPlayer player, CardCollectionActionPayload payload) {
         if (isParticipating(player.getUUID()) && payload.action() != CardCollectionActionPayload.Action.REQUEST) return;
@@ -540,7 +541,7 @@ public final class BattleSystem {
 
     @SubscribeEvent public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            BattleNetwork.sendEquipment(player, PLAYER_EQUIPMENT.slots(player.getServer(), player.getUUID()));
+            var pack = net.exmo.exworld.inventory.PlayerBackpack.of(player); BattleNetwork.sendEquipment(player, net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(0)), net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(1)));
             syncParty(player);
             DungeonSystem.onPlayerLogin(player);
             Optional<BattleSnapshot> snapshot=snapshotFor(player.getUUID());

@@ -544,5 +544,11 @@
   "screen.exworld.ship_name": "模板名称",
   "screen.exworld.ship_part_name": "部位名称",
   "screen.exworld.ship_speed": "速度",
-  "screen.exworld.ship_variants": "允许变体(逗号分隔)"
+  "screen.exworld.ship_variants": "允许变体(逗号分隔)",
+  "screen.exworld.footprint_edit": "编辑",
+  "screen.exworld.footprint_editor": "物品占位编辑",
+  "screen.exworld.footprint_item": "物品 ID",
+  "screen.exworld.footprint_from_hand": "主手",
+  "screen.exworld.footprint_apply": "应用",
+  "screen.exworld.footprint_empty": "暂无自定义规则"
 }

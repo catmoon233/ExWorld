@@ -10,18 +10,10 @@ import net.minecraft.world.item.ItemStack;
 public final class WeaponSwitchService {
     public String switchMainHand(ServerPlayer player, Combatant actor, int weaponSlot) {
         if (player == null || actor == null || weaponSlot < 1 || weaponSlot > 2) return "battle.command.weapon_unavailable";
-        String wanted = actor.weaponItem(weaponSlot);
-        if (wanted.isBlank()) return "battle.command.weapon_unavailable";
-        Inventory inventory = player.getInventory();
-        int target = findItem(inventory, wanted);
-        if (target < 0) return "battle.command.weapon_missing";
-        int selected = inventory.selected;
-        if (target != selected) {
-            ItemStack held = inventory.getItem(selected).copy();
-            inventory.setItem(selected, inventory.getItem(target).copy());
-            inventory.setItem(target, held);
-        }
-        inventory.setChanged();
+        ItemStack rail = net.exmo.exworld.inventory.PlayerBackpack.of(player).weapon(weaponSlot - 1);
+        if (rail.isEmpty()) return "battle.command.weapon_missing";
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, rail.copy());
+        player.getInventory().setChanged();
         actor.setActiveWeaponSlot(weaponSlot);
         return "";
     }

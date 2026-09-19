@@ -544,5 +544,11 @@
   "screen.exworld.ship_name": "Template Name",
   "screen.exworld.ship_part_name": "Part Name",
   "screen.exworld.ship_speed": "Speed",
-  "screen.exworld.ship_variants": "Allowed variants (comma separated)"
+  "screen.exworld.ship_variants": "Allowed variants (comma separated)",
+  "screen.exworld.footprint_edit": "Edit",
+  "screen.exworld.footprint_editor": "Item Footprint Editor",
+  "screen.exworld.footprint_item": "Item ID",
+  "screen.exworld.footprint_from_hand": "From Hand",
+  "screen.exworld.footprint_apply": "Apply",
+  "screen.exworld.footprint_empty": "No custom rules yet"
 }

@@ -636,7 +636,7 @@ public final class BattleClient {
                 || BattleHud.scrollItems(mouseX, mouseY, event.getScrollDeltaY())) event.setCanceled(true);
     }
     private static void screenOpening(ScreenEvent.Opening event) {
-        if (active() && event.getNewScreen() instanceof InventoryScreen) event.setCanceled(true);
+        if (active() && (event.getNewScreen() instanceof InventoryScreen || event.getNewScreen() instanceof net.exmo.exworld.client.inventory.PlayerBackpackScreen)) event.setCanceled(true);
     }
 
     public static void key(InputEvent.Key event) {

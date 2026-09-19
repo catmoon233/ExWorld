@@ -44,7 +44,10 @@ public final class BattleNetwork {
         PacketDistributor.sendToPlayer(player, new BattleSnapshotPayload(snapshot.forViewer(player.getUUID())));
     }
     public static void sendEquipment(ServerPlayer player, PlayerEquipmentSavedData.Slots snapshot) {
-        PacketDistributor.sendToPlayer(player, new EquipmentSnapshotPayload(snapshot.first(), snapshot.second()));
+        sendEquipment(player, snapshot.first(), snapshot.second());
+    }
+    public static void sendEquipment(ServerPlayer player, String slot1, String slot2) {
+        PacketDistributor.sendToPlayer(player, new EquipmentSnapshotPayload(slot1 == null ? "" : slot1, slot2 == null ? "" : slot2));
     }
     public static void sendClear(ServerPlayer player, String outcome) { PacketDistributor.sendToPlayer(player, new BattleClearPayload(outcome)); }
     public static void sendCollection(ServerPlayer player, CardCollectionSnapshot snapshot) { PacketDistributor.sendToPlayer(player, new CardCollectionPayload(snapshot)); }
