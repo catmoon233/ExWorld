@@ -123,6 +123,7 @@ public final class WorldMapScreen extends Screen {
     private void renderMap(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
         if (archipelago) {
             renderArchipelagoRegions(graphics, layout);
+            renderMergedRegionOutlines(graphics, layout);
         } else {
             MapRect map = mapRect(layout);
             if (biomeAtlas != null) graphics.blit(biomeAtlas.location(), map.x, map.y, 0, 0,
@@ -151,8 +152,11 @@ public final class WorldMapScreen extends Screen {
                 if (!visible(rect, layout)) continue;
                 int color = 0x38000000 | darken(regionColor(tile.regionId()), 0.30);
                 graphics.fill(rect.x + 1, rect.y + 1, rect.right() - 1, rect.bottom() - 1, color);
-                if (tile.island() && cell >= 9.0 && rect.width >= 18) {
-                    graphics.drawCenteredString(font, tile.sites(), rect.centerX(), rect.centerY() - 4, IVORY);
+                if (tile.island() && cell >= 6.0 && rect.width >= 14) {
+                    int labelWidth = font.width(tile.sites()) + 6;
+                    graphics.fill(rect.centerX() - labelWidth / 2, rect.centerY() - 11,
+                            rect.centerX() + labelWidth / 2, rect.centerY() + 1, 0xD8080D10);
+                    graphics.drawCenteredString(font, tile.sites(), rect.centerX(), rect.centerY() - 9, islandColor(tile.sites()));
                 }
             }
         }
@@ -166,7 +170,7 @@ public final class WorldMapScreen extends Screen {
         for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
             for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
                 MapTile tile = tileGrid.get(key(mapX, mapZ));
-                if (tile == null || !configured(tile)) continue;
+                if (tile == null || (!archipelago && !configured(tile))) continue;
                 TileRect rect = tileRect(tile, layout);
                 int color = 0xE6000000 | darken(regionColor(tile.regionId()), 0.52);
                 int mask = regionOutlines.mask(tile);
@@ -411,6 +415,16 @@ public final class WorldMapScreen extends Screen {
     private static int regionColor(String id) {
         int[] palette = {0x79A4A8, 0xAE936D, 0x729176, 0xA3787B, 0x8984A8, 0xA3A073, 0x709590, 0xA27B96};
         return palette[Math.floorMod(id.hashCode(), palette.length)];
+    }
+    private static int islandColor(String sites) {
+        return switch (sites) {
+            case "主岛" -> 0xFFD9A6;
+            case "资源岛" -> 0x8FD48F;
+            case "秘境岛" -> 0xB58FE0;
+            case "死岛" -> 0xA8B0B4;
+            case "游岛" -> 0x6FD4E8;
+            default -> 0xE8D6A8;
+        };
     }
     private static int darken(int rgb, double factor) {
         int red = (int) (((rgb >> 16) & 0xFF) * factor);

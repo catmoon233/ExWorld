@@ -42,16 +42,19 @@ public final class WorldBoundaryRenderer {
             bottom = minecraft.level.getMinBuildHeight();
             top = minecraft.level.getMaxBuildHeight();
         } else if (ClientChunkGroupState.archipelago()) {
-            // Island worlds keep the translucent wall on a fixed height band instead of following the player up and down.
-            bottom = Math.max(minecraft.level.getMinBuildHeight(),
-                    IslandLayout.DEFAULT_MIN_Y - IslandLayout.DEFAULT_THICKNESS_MAX - 8);
-            top = Math.min(minecraft.level.getMaxBuildHeight(), IslandLayout.DEFAULT_MAX_Y + 8);
+            // A fixed 5-block band at the island-top level, never following the player up and down.
+            bottom = IslandLayout.DEFAULT_MIN_Y;
+            top = IslandLayout.DEFAULT_MIN_Y + 5.0;
         } else {
-            bottom = minecraft.player.getY() - 0.05;
-            top = minecraft.player.getY() + 1.5;
+            bottom = minecraft.player.getY() - 2.0;
+            top = minecraft.player.getY() + 3.0;
         }
         double thickness = 0.28;
-        float alpha = legacy ? 0.56F : 0.28F;
+        float alpha = legacy ? 0.56F : 0.34F;
+        int color = regionColor(shape.id());
+        float red = ((color >> 16) & 0xFF) / 255F;
+        float green = ((color >> 8) & 0xFF) / 255F;
+        float blue = (color & 0xFF) / 255F;
 
         // BufferSource may reuse one BufferBuilder for non-fixed render types. Finish one type before requesting the
         // next, otherwise getBuffer(debugFilledBox) can close the still-referenced lines consumer.
@@ -60,21 +63,27 @@ public final class WorldBoundaryRenderer {
             ChunkGroupBounds bounds = ChunkGroupBounds.forGroup(cell.x(), cell.z(), shape.groupChunks());
             int edges = shape.boundaryMask(cell);
             if ((edges & ChunkGroupShape.WEST) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.minX() + thickness, top, bounds.maxZ(), alpha);
+                    bounds.minX() + thickness, top, bounds.maxZ(), alpha, red, green, blue);
             if ((edges & ChunkGroupShape.EAST) != 0) addWall(pose, mask, bounds.maxX() - thickness, bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.maxZ(), alpha);
+                    bounds.maxX(), top, bounds.maxZ(), alpha, red, green, blue);
             if ((edges & ChunkGroupShape.NORTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.minZ() + thickness, alpha);
+                    bounds.maxX(), top, bounds.minZ() + thickness, alpha, red, green, blue);
             if ((edges & ChunkGroupShape.SOUTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.maxZ() - thickness,
-                    bounds.maxX(), top, bounds.maxZ(), alpha);
+                    bounds.maxX(), top, bounds.maxZ(), alpha, red, green, blue);
         }
         minecraft.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
         pose.popPose();
     }
 
     private static void addWall(PoseStack pose, VertexConsumer consumer, double minX, double minY, double minZ,
-                                double maxX, double maxY, double maxZ, float alpha) {
+                                double maxX, double maxY, double maxZ, float alpha, float red, float green, float blue) {
         LevelRenderer.addChainedFilledBoxVertices(pose, consumer, minX, minY, minZ, maxX, maxY, maxZ,
-                0.88F, 0.89F, 0.90F, alpha);
+                red, green, blue, alpha);
+    }
+
+    /** One colour per region, matching the strategic-map palette. */
+    private static int regionColor(String id) {
+        int[] palette = {0x79A4A8, 0xAE936D, 0x729176, 0xA3787B, 0x8984A8, 0xA3A073, 0x709590, 0xA27B96};
+        return palette[Math.floorMod(id.hashCode(), palette.length)];
     }
 }
