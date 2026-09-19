@@ -42,6 +42,9 @@ public class ShipEntity extends Entity {
     private ShipHull hull = ShipHull.empty();
     private PartSelection selection = PartSelection.empty();
     private double maxSpeed = 0.35;
+    private static final double ACCELERATION = 0.05;
+    private static final double FRICTION = 0.90;
+    private Vec3 velocity = Vec3.ZERO;
     private UUID driverId;
     private int driveFlags;
     private int driveTicks;
@@ -149,8 +152,8 @@ public class ShipEntity extends Entity {
             lastDelta = position().subtract(before);
             tickAboard();
         } else {
-            // 本地预测：骑乘者视角由客户端驱动船体，不等服务器位置包。
-            if (driveFlags != 0) tickDrive();
+            // 本地预测：客户端用同样的速度模型驱动船体，不等服务器位置包。
+            tickDrive();
             lastDelta = position().subtract(before);
         }
         refreshBounds();
@@ -175,22 +178,40 @@ public class ShipEntity extends Entity {
             Entity driver = ((ServerLevel) level()).getEntity(driverId);
             if (!(driver instanceof Player player) || player.getVehicle() != this) driverId = null;
         }
-        if (driveFlags == 0) return;
-        float yaw = driveYaw;
-        double rad = yaw * Mth.DEG_TO_RAD;
-        double forward = ((driveFlags & 1) != 0 ? 1 : 0) - ((driveFlags & 2) != 0 ? 1 : 0);
-        double strafe = ((driveFlags & 4) != 0 ? 1 : 0) - ((driveFlags & 8) != 0 ? 1 : 0);
-        double up = ((driveFlags & 16) != 0 ? 1 : 0) - ((driveFlags & 32) != 0 ? 1 : 0);
-        double x = (-Math.sin(rad) * forward) + (Math.cos(rad) * strafe);
-        double z = (Math.cos(rad) * forward) + (Math.sin(rad) * strafe);
+        // 推力方向（驾驶 yaw 决定前后左右，垂直轴独立）
+        if (driveFlags != 0) {
+            float yaw = driveYaw;
+            double rad = yaw * Mth.DEG_TO_RAD;
+            double forward = ((driveFlags & 1) != 0 ? 1 : 0) - ((driveFlags & 2) != 0 ? 1 : 0);
+            double strafe = ((driveFlags & 4) != 0 ? 1 : 0) - ((driveFlags & 8) != 0 ? 1 : 0);
+            double up = ((driveFlags & 16) != 0 ? 1 : 0) - ((driveFlags & 32) != 0 ? 1 : 0);
+            double x = (-Math.sin(rad) * forward) + (Math.cos(rad) * strafe);
+            double z = (Math.cos(rad) * forward) + (Math.sin(rad) * strafe);
+            Vec3 thrust = new Vec3(x, up, z);
+            double length = thrust.length();
+            if (length > 1.0E-8) velocity = velocity.add(thrust.scale(ACCELERATION / length));
+        } else {
+            // 松开油门：摩擦减速，带一点滑行惯性
+            velocity = velocity.scale(FRICTION);
+        }
+        double speed = velocity.length();
+        if (speed > maxSpeed) velocity = velocity.scale(maxSpeed / speed);
+        if (velocity.lengthSqr() < 1.0E-8) { velocity = Vec3.ZERO; return; }
+        Vec3 from = position();
         KinematicMover.Vec next = KinematicMover.step(
-                new KinematicMover.Vec(getX(), getY(), getZ()),
-                new KinematicMover.Vec(x, up, z),
+                new KinematicMover.Vec(from.x, from.y, from.z),
+                new KinematicMover.Vec(velocity.x, velocity.y, velocity.z),
                 maxSpeed,
                 hullBox(),
                 this::blocked);
-        Vec3 delta = new Vec3(next.x() - getX(), next.y() - getY(), next.z() - getZ());
-        setPos(next.x(), next.y(), next.z());
+        Vec3 nextPos = new Vec3(next.x(), next.y(), next.z());
+        // 撞墙的轴速度清零，未挡的轴保留，形成滑墙
+        velocity = new Vec3(
+                Math.abs(nextPos.x - from.x) < Math.abs(velocity.x) - 1.0E-4 ? 0 : velocity.x,
+                Math.abs(nextPos.y - from.y) < Math.abs(velocity.y) - 1.0E-4 ? 0 : velocity.y,
+                Math.abs(nextPos.z - from.z) < Math.abs(velocity.z) - 1.0E-4 ? 0 : velocity.z);
+        Vec3 delta = nextPos.subtract(from);
+        setPos(nextPos.x, nextPos.y, nextPos.z);
         if (!level().isClientSide()) broadcastMove(delta);
     }
 
