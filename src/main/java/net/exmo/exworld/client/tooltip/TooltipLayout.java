@@ -21,7 +21,7 @@ public final class TooltipLayout {
     private TooltipLayout() {}
 
     public static int headerHeight() {
-        return 38;
+        return 27;
     }
 
     public static int headerContentWidth(int titleWidth, int nameTagsWidth, int rarityWidth) {

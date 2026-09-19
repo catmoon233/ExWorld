@@ -131,9 +131,10 @@ public final class TooltipRenderer {
         TooltipPainter.drawGlow(graphics, x, y, panelW, panelH, accent, fade);
         TooltipPainter.drawPanel(graphics, x, y, panelW, panelH, theme, accent, fade, now);
 
-        // ---- Header: slot + animated icon + title + tags + rarity ----
+        // ---- Header: slot frame + fixed-centre icon + title + tags + rarity (compact) ----
         int slotX = x + TooltipLayout.PAD;
         int slotY = y + TooltipLayout.PAD + (headerH - TooltipLayout.SLOT) / 2;
+        TooltipPainter.drawSlot(graphics, slotX, slotY, theme, fade);
         int iconCenterX = slotX + TooltipLayout.SLOT / 2;
         int iconCenterY = slotY + TooltipLayout.SLOT / 2;
         TooltipPainter.drawAnimatedItem(graphics, stack, iconCenterX, iconCenterY,
@@ -142,9 +143,8 @@ public final class TooltipRenderer {
         int contentLeft = x + TooltipLayout.PAD;
         int contentRight = x + panelW - TooltipLayout.PAD;
         int textX = contentLeft + TooltipLayout.TITLE_OFFSET;
-        int titleY = slotY + 2;
-        int rarityY = titleY + TooltipLayout.LINE + 2;
-        int row2Y = model.rarityLabel().isEmpty() ? rarityY : rarityY + TooltipLayout.LINE + 2;
+        int titleY = slotY + 1;
+        int rarityY = titleY + TooltipLayout.LINE + 1;
 
         if (titleW > width) {
             graphics.enableScissor(textX, titleY - 1, contentRight, titleY + TooltipLayout.LINE + 1);
@@ -161,21 +161,21 @@ public final class TooltipRenderer {
             tagX = TooltipPainter.drawBadge(graphics, font, tag.label(), tagX, titleY, bg, fg, contentLeft, contentRight)
                     + TooltipLayout.TAG_GAP;
         }
-        if (tagRows.size() > 1) {
-            int rowX = textX;
-            for (NameTag tag : tagRows.get(1)) {
-                int bg = tag.color() | 0xCC000000;
-                int fg = RarityPalette.isCommon(tag.color()) ? RarityPalette.contrastText(tag.color()) : theme.badgeCutout();
-                rowX = TooltipPainter.drawBadge(graphics, font, tag.label(), rowX, row2Y, bg, fg, contentLeft, contentRight)
-                        + TooltipLayout.TAG_GAP;
-            }
-        }
         if (!model.rarityLabel().isEmpty()) {
             graphics.drawString(font, model.rarityLabel(), textX, rarityY, accent, false);
         }
+        if (tagRows.size() > 1) {
+            int rowX = textX + (model.rarityLabel().isEmpty() ? 0 : font.width(model.rarityLabel()) + TooltipLayout.TAG_GAP * 2);
+            for (NameTag tag : tagRows.get(1)) {
+                int bg = tag.color() | 0xCC000000;
+                int fg = RarityPalette.isCommon(tag.color()) ? RarityPalette.contrastText(tag.color()) : theme.badgeCutout();
+                rowX = TooltipPainter.drawBadge(graphics, font, tag.label(), rowX, rarityY, bg, fg, contentLeft, contentRight)
+                        + TooltipLayout.TAG_GAP;
+            }
+        }
 
         // ---- Content: chips / suits / body / natives inside a scrolling viewport ----
-        int contentTop = y + TooltipLayout.PAD + headerH + 4;
+        int contentTop = y + TooltipLayout.PAD + headerH + 2;
         int scissorBottom = contentTop + viewport;
         if (contentH > 0) {
             graphics.enableScissor(x + 2, contentTop, x + panelW - 2, scissorBottom);

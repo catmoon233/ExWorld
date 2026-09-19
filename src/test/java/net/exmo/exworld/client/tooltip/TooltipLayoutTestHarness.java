@@ -35,6 +35,36 @@ public final class TooltipLayoutTestHarness {
         if (header < TooltipLayout.TITLE_OFFSET + "Iron Sword".length() + tags) {
             throw new AssertionError("header width must include title offset and tags");
         }
+
+        List<NameTag> nameTags = List.of(
+                new NameTag("SWORD", 1),
+                new NameTag("Common", 2),
+                new NameTag("LongOverflowTag", 3)
+        );
+        java.util.function.IntUnaryOperator tagW = TooltipLayout::chipWidth;
+        List<List<NameTag>> wrappedNarrow = NameTag.wrap(
+                nameTags,
+                tag -> tagW.applyAsInt(tag.label().length()),
+                10,
+                10,
+                TooltipLayout.TAG_GAP
+        );
+        if (wrappedNarrow.size() != 3) {
+            throw new AssertionError("name tags should wrap when the title row is full, got " + wrappedNarrow.size());
+        }
+        List<List<NameTag>> wrappedWide = NameTag.wrap(
+                nameTags,
+                tag -> tagW.applyAsInt(tag.label().length()),
+                60,
+                60,
+                TooltipLayout.TAG_GAP
+        );
+        if (wrappedWide.size() != 1 || wrappedWide.getFirst().size() != 3) {
+            throw new AssertionError("name tags should stay on one row when there is room");
+        }
+        if (TooltipLayout.headerHeight() != 27) {
+            throw new AssertionError("header must stay compact enough for title and rarity rows");
+        }
         System.out.println("Tooltip layout tests passed");
     }
 }

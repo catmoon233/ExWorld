@@ -111,24 +111,18 @@ public final class TooltipPainter {
         }
     }
 
-    /** simplytooltips-style animated icon: breathe + bob + Z tilt; equipment items rotate in 3D around Y. */
+    /** Animated icon with a fixed centre: slow Y rotation for equipment, gentle Z tilt otherwise. No bob or scale. */
     public static void drawAnimatedItem(GuiGraphics graphics, ItemStack stack, int centerX, int centerY,
                                         long timeMs, boolean equipment) {
         graphics.pose().pushPose();
-        double breathe;
-        double bob = Math.sin(timeMs * 0.0026 + 1.1) * 0.7;
         if (equipment) {
-            breathe = 1.0 + Math.sin(timeMs * 0.0042) * 0.08;
-            double spinY = (timeMs % 6000L) / 6000.0 * 360.0;
-            graphics.pose().translate(centerX, centerY + bob, 0);
+            double spinY = (timeMs % 9000L) / 9000.0 * 360.0;
+            graphics.pose().translate(centerX, centerY, 0);
             graphics.pose().mulPose(Axis.YP.rotationDegrees((float) spinY));
-            graphics.pose().scale((float) breathe, (float) breathe, 1.0f);
         } else {
-            breathe = 1.0 + Math.sin(timeMs * 0.0042) * 0.05;
-            float spinZ = (float) (Math.sin(timeMs * 0.0018) * 4.0);
-            graphics.pose().translate(centerX, centerY + bob, 0);
+            float spinZ = (float) (Math.sin(timeMs * 0.0018) * 3.0);
+            graphics.pose().translate(centerX, centerY, 0);
             graphics.pose().mulPose(Axis.ZP.rotationDegrees(spinZ));
-            graphics.pose().scale((float) breathe, (float) breathe, 1.0f);
         }
         graphics.pose().translate(-8.0f, -8.0f, 0.0f);
         graphics.renderItem(stack, 0, 0);
