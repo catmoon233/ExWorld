@@ -80,7 +80,7 @@ public final class MountedInventory implements Container {
     }
 
     @Override public boolean stillValid(Player player) {
-        return ship.isAlive() && player.distanceToSqr(ship) < 64;
+        return ship.isAlive() && ship.getBoundingBox().inflate(8).contains(player.position());
     }
     @Override public void clearContent() { java.util.Arrays.fill(items, ItemStack.EMPTY); setChanged(); }
 }

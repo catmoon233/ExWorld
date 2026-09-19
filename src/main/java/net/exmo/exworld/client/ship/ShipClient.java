@@ -77,6 +77,7 @@ public final class ShipClient {
             if (options.keyRight.isDown()) flags |= 8;
             if (options.keyJump.isDown()) flags |= 16;
             if (options.keySprint.isDown()) flags |= 32;
+            ship.driveLocal(flags, player.getYRot());
             ShipNetwork.drive(ship.getId(), flags, player.getYRot());
             return;
         }
@@ -91,14 +92,19 @@ public final class ShipClient {
             AboardAttachment.Result result = AboardAttachment.inspect(local.x, local.y, local.z, ship.hull());
             if (!result.aboard()) continue;
             Vec3 snapped = ship.toWorld(new Vec3(local.x, result.snapLocalY(), local.z));
-            if (Math.abs(carried.y - snapped.y) < 1.5) {
-                player.setPos(snapped.x, snapped.y, snapped.z);
+            boolean rising = player.getDeltaMovement().y > 0.01;
+            boolean steering = player.xxa != 0 || player.zza != 0;
+            if (!rising && Math.abs(carried.y - snapped.y) < 1.5) {
+                double x = steering ? player.getX() : snapped.x;
+                double z = steering ? player.getZ() : snapped.z;
+                player.setPos(x, snapped.y, z);
                 player.setDeltaMovement(player.getDeltaMovement().multiply(1, 0, 1));
                 player.setOnGround(true);
             }
             return;
         }
     }
+
 
     private static void click(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isUseItem()) return;

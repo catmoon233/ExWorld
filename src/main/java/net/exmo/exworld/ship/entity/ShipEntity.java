@@ -12,6 +12,8 @@ import net.exmo.exworld.ship.storage.ShipNbtCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -46,6 +48,7 @@ public class ShipEntity extends Entity {
     private final Map<Integer, Button> buttons = new HashMap<>();
     private Vec3 lastDelta = Vec3.ZERO;
     private Vec3 rideLocal = new Vec3(0.5, 1.0, 0.5);
+    private float driveYaw;
 
     public ShipEntity(EntityType<?> type, Level level) {
         super(type, level);
@@ -109,7 +112,16 @@ public class ShipEntity extends Entity {
     public void drive(int flags, float yaw) {
         this.driveFlags = flags;
         this.driveTicks = 8;
+        this.driveYaw = yaw;
         entityData.set(YAW, yaw);
+        setYRot(yaw);
+    }
+
+    /** 客户端本地预测：只写本地状态，不碰同步数据。 */
+    public void driveLocal(int flags, float yaw) {
+        this.driveFlags = flags;
+        this.driveTicks = 8;
+        this.driveYaw = yaw;
         setYRot(yaw);
     }
 
@@ -136,7 +148,11 @@ public class ShipEntity extends Entity {
             tickDrive();
             lastDelta = position().subtract(before);
             tickAboard();
-        } else lastDelta = position().subtract(before);
+        } else {
+            // 本地预测：骑乘者视角由客户端驱动船体，不等服务器位置包。
+            if (driveFlags != 0) tickDrive();
+            lastDelta = position().subtract(before);
+        }
         refreshBounds();
     }
 
@@ -155,12 +171,12 @@ public class ShipEntity extends Entity {
     private void tickDrive() {
         if (driveTicks > 0) driveTicks--;
         else driveFlags = 0;
-        if (driverId != null) {
+        if (!level().isClientSide() && driverId != null) {
             Entity driver = ((ServerLevel) level()).getEntity(driverId);
             if (!(driver instanceof Player player) || player.getVehicle() != this) driverId = null;
         }
         if (driveFlags == 0) return;
-        float yaw = entityData.get(YAW);
+        float yaw = driveYaw;
         double rad = yaw * Mth.DEG_TO_RAD;
         double forward = ((driveFlags & 1) != 0 ? 1 : 0) - ((driveFlags & 2) != 0 ? 1 : 0);
         double strafe = ((driveFlags & 4) != 0 ? 1 : 0) - ((driveFlags & 8) != 0 ? 1 : 0);
@@ -173,7 +189,25 @@ public class ShipEntity extends Entity {
                 maxSpeed,
                 hullBox(),
                 this::blocked);
+        Vec3 delta = new Vec3(next.x() - getX(), next.y() - getY(), next.z() - getZ());
         setPos(next.x(), next.y(), next.z());
+        if (!level().isClientSide()) broadcastMove(delta);
+    }
+
+    /** 每 tick 发相对移动包，客户端 lerp 插值，避免位置跳变；定期 teleport 校正漂移。 */
+    private void broadcastMove(Vec3 delta) {
+        if (delta.lengthSqr() < 1.0E-10) return;
+        short sx = (short) Mth.clamp(delta.x * 4096.0, -32768, 32767);
+        short sy = (short) Mth.clamp(delta.y * 4096.0, -32768, 32767);
+        short sz = (short) Mth.clamp(delta.z * 4096.0, -32768, 32767);
+        sendToTrackers(new ClientboundMoveEntityPacket.Pos(getId(), sx, sy, sz, onGround()));
+        if (tickCount % 20 == 0) sendToTrackers(new ClientboundTeleportEntityPacket(this));
+    }
+
+    private void sendToTrackers(net.minecraft.network.protocol.Packet<?> packet) {
+        for (ServerPlayer tracker : ((ServerLevel) level()).getPlayers(player -> player.distanceToSqr(this) < 64.0 * 64.0)) {
+            tracker.connection.send(packet);
+        }
     }
 
     private void tickAboard() {
@@ -185,10 +219,15 @@ public class ShipEntity extends Entity {
             AboardAttachment.Result result = AboardAttachment.inspect(local.x, local.y, local.z, hull);
             if (!result.aboard()) continue;
             Vec3 snapped = toWorld(new Vec3(local.x, result.snapLocalY(), local.z));
-            if (Math.abs(carried.y - snapped.y) >= 1.5) snapped = carried;
-            if (player instanceof ServerPlayer server) server.teleportTo(snapped.x, snapped.y, snapped.z);
-            else player.setPos(snapped.x, snapped.y, snapped.z);
-            player.setOnGround(true);
+            boolean rising = player.getDeltaMovement().y > 0.01;
+            boolean steering = player.xxa != 0 || player.zza != 0;
+            double targetX = steering ? player.getX() : snapped.x;
+            double targetZ = steering ? player.getZ() : snapped.z;
+            double targetY = rising ? carried.y : snapped.y;
+            if (!rising && Math.abs(carried.y - snapped.y) >= 1.5) targetY = carried.y;
+            if (player instanceof ServerPlayer server) server.teleportTo(targetX, targetY, targetZ);
+            else player.setPos(targetX, targetY, targetZ);
+            player.setOnGround(!rising);
         }
     }
 
