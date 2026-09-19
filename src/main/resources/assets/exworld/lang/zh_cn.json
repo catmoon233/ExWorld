@@ -532,5 +532,17 @@
   "screen.exworld.creative_edit": "编辑",
   "screen.exworld.creative_size": "尺寸",
   "screen.exworld.creative_quality": "品质",
-  "screen.exworld.creative_save": "保存"
+  "screen.exworld.creative_save": "保存",
+  "screen.exworld.ship_steps": "编辑步骤",
+  "screen.exworld.ship_step_1": "① 采集或载入模板",
+  "screen.exworld.ship_step_2": "② 选中部位 → 点击体素",
+  "screen.exworld.ship_step_3": "③ 保存 → 实体化",
+  "screen.exworld.ship_hint_toggle": "左键：加入/移除体素 · 右键：移除 · 拖动：旋转 · 滚轮：缩放 · Delete：取消高亮",
+  "screen.exworld.ship_load_temple": "载入神庙模板",
+  "screen.exworld.ship_clear_part": "清空部位",
+  "screen.exworld.ship_id": "模板 ID",
+  "screen.exworld.ship_name": "模板名称",
+  "screen.exworld.ship_part_name": "部位名称",
+  "screen.exworld.ship_speed": "速度",
+  "screen.exworld.ship_variants": "允许变体(逗号分隔)"
 }

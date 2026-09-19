@@ -11,6 +11,7 @@ import net.exmo.exworld.ship.model.PartSelection;
 import net.exmo.exworld.ship.model.ShipHull;
 import net.exmo.exworld.ship.model.ShipTemplate;
 import net.exmo.exworld.ship.storage.ShipNbtCodec;
+import net.exmo.exworld.ship.storage.ShipTemplates;
 import net.exmo.exworld.ship.storage.ShipTemplateStore;
 import net.exmo.exworld.ship.upgrade.ShipUpgradeRules;
 import net.minecraft.commands.Commands;
@@ -58,6 +59,12 @@ public final class ShipSystem {
                     else templates.forEach(template -> context.getSource().sendSuccess(() ->
                             Component.literal(template.id() + " · " + template.name() + " · " + template.hull().size()), false));
                     return templates.size();
+                }))
+                .then(Commands.literal("temple").executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayerOrException();
+                    ShipTemplateStore.get(player.getServer()).put(ShipTemplates.temple());
+                    openEditor(player, ShipTemplates.TEMPLE_ID);
+                    return 1;
                 }))
                 .then(Commands.literal("edit").executes(context -> {
                     openEditor(context.getSource().getPlayerOrException(), "");

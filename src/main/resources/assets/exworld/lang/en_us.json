@@ -532,5 +532,17 @@
   "screen.exworld.creative_edit": "Edit",
   "screen.exworld.creative_size": "Size",
   "screen.exworld.creative_quality": "Quality",
-  "screen.exworld.creative_save": "Save"
+  "screen.exworld.creative_save": "Save",
+  "screen.exworld.ship_steps": "Editing Steps",
+  "screen.exworld.ship_step_1": "1. Capture or load a template",
+  "screen.exworld.ship_step_2": "2. Select a part, then click voxels",
+  "screen.exworld.ship_step_3": "3. Save, then materialize",
+  "screen.exworld.ship_hint_toggle": "Left: toggle voxel · Right: remove · Drag: rotate · Scroll: zoom · Delete: clear highlight",
+  "screen.exworld.ship_load_temple": "Load Temple Ship",
+  "screen.exworld.ship_clear_part": "Clear Part",
+  "screen.exworld.ship_id": "Template ID",
+  "screen.exworld.ship_name": "Template Name",
+  "screen.exworld.ship_part_name": "Part Name",
+  "screen.exworld.ship_speed": "Speed",
+  "screen.exworld.ship_variants": "Allowed variants (comma separated)"
 }

@@ -21,6 +21,10 @@ public final class ShipTemplateStore extends SavedData {
 
     private final Map<String, ShipTemplate> templates = new LinkedHashMap<>();
 
+    private ShipTemplateStore() {
+        seedBuiltin();
+    }
+
     public static ShipTemplateStore get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, ID);
     }
@@ -68,6 +72,14 @@ public final class ShipTemplateStore extends SavedData {
             } catch (RuntimeException ignored) {
             }
         }
+        store.seedBuiltin();
         return store;
+    }
+
+    private void seedBuiltin() {
+        if (!templates.containsKey(ShipTemplates.TEMPLE_ID)) {
+            templates.put(ShipTemplates.TEMPLE_ID, ShipTemplates.temple());
+            setDirty();
+        }
     }
 }

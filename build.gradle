@@ -386,3 +386,9 @@ tasks.register('kinematicMoverTest', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.ship.KinematicMoverTestHarness'
 }
+
+tasks.register('shipTempleTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ship.ShipTemplatesTestHarness'
+}
