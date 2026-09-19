@@ -67,6 +67,7 @@ public final class TooltipModelFactory {
                 quality,
                 chips,
                 ExModifierTooltip.slotSection(item, catalog, translate),
+                ExModifierTooltip.affixes(onItem, catalog, translate),
                 ExModifierTooltip.suits(onItem, equipped, catalog, translate),
                 body
         );

@@ -51,6 +51,7 @@ public final class TooltipRenderer {
         }
         TooltipModel model = TooltipModelFactory.build(stack, lines, minecraft.player);
         List<ClientTooltipComponent> natives = natives(components);
+        boolean shiftDown = Screen.hasShiftDown();
 
         int target = model.qualityId().map(RarityPalette::qualityColor)
                 .orElseGet(() -> RarityPalette.color(model.rarity()));
@@ -79,7 +80,6 @@ public final class TooltipRenderer {
                 firstCap, laterCap, TooltipLayout.TAG_GAP);
         int row1Width = tagRows.isEmpty() ? 0 : NameTag.rowWidth(tagRows.getFirst(), font::width, TooltipLayout.CHIP_PAD_H, TooltipLayout.TAG_GAP);
         int headerW = TooltipLayout.headerContentWidth(titleW, row1Width, font.width(model.rarityLabel()));
-
         int width = Math.max(TooltipLayout.MIN_WIDTH, headerW);
         width = Math.max(width, suitWidth(model.suits(), font));
         width = Math.max(width, slotRowWidth(model.slots(), font));
@@ -88,13 +88,12 @@ public final class TooltipRenderer {
             width = Math.max(width, nativeComponent.getWidth(font));
         }
         width = Math.min(TooltipLayout.MAX_TEXT, width);
-        List<List<Chip>> chipRows = TooltipLayout.wrapChips(model.chips(), font::width, width);
-        width = Math.min(TooltipLayout.MAX_TEXT, Math.max(width, maxChipRowWidth(chipRows, font)));
+        width = Math.min(TooltipLayout.MAX_TEXT, Math.max(width, affixWidth(model.affixes(), shiftDown, font)));
         int panelW = width + TooltipLayout.PAD * 2;
 
         // ---- Height ----
         int headerH = TooltipLayout.headerHeight();
-        int chipsH = TooltipLayout.chipBlockHeight(chipRows.size());
+        int affixH = affixHeight(model.affixes(), shiftDown);
         int suitsH = suitHeight(model.suits());
         int bodyH = model.bodyLines().size() * (TooltipLayout.LINE + 1);
         int nativeH = 0;
@@ -102,7 +101,7 @@ public final class TooltipRenderer {
             nativeH += nativeComponent.getHeight() + NATIVE_GAP;
         }
         int contentH = 0;
-        if (chipsH > 0) contentH += 4 + chipsH;
+        if (affixH > 0) contentH += 4 + affixH;
         if (model.slots().total() > 0) contentH += 4 + (TooltipLayout.LINE + 2)
                 + (model.slots().names().isEmpty() ? 0 : TooltipLayout.LINE + 1);
         if (suitsH > 0) contentH += 6 + suitsH;
@@ -174,23 +173,33 @@ public final class TooltipRenderer {
             }
         }
 
-        // ---- Content: chips / suits / body / natives inside a scrolling viewport ----
+        // ---- Content: affixes / slots / suits / body / natives inside a scrolling viewport ----
         int contentTop = y + TooltipLayout.PAD + headerH + 2;
         int scissorBottom = contentTop + viewport;
         if (contentH > 0) {
             graphics.enableScissor(x + 2, contentTop, x + panelW - 2, scissorBottom);
             int cy = contentTop - scroll;
-            if (!chipRows.isEmpty()) {
-                for (List<Chip> row : chipRows) {
-                    int cx = contentLeft;
-                    for (Chip chip : row) {
+            if (!model.affixes().isEmpty()) {
+                if (shiftDown) {
+                    for (ExModifierTooltip.AffixDetail detail : model.affixes()) {
+                        Chip chip = detail.chip();
                         int fg = RarityPalette.isCommon(chip.color()) ? RarityPalette.contrastText(chip.color()) : theme.badgeCutout();
-                        cx = TooltipPainter.drawBadge(graphics, font, chip.label(), cx, cy,
-                                chip.color() | 0xCC000000, fg, contentLeft, contentRight) + TooltipLayout.CHIP_GAP;
+                        TooltipPainter.drawBadge(graphics, font, chip.label(), contentLeft, cy,
+                                chip.color() | 0xCC000000, fg, contentLeft, contentRight);
+                        cy += TooltipLayout.LINE + 1;
+                        if (!detail.attributes().isEmpty()) {
+                            TooltipPainter.drawBodyLine(graphics, font, String.join("   ", detail.attributes()),
+                                    contentLeft + 6, cy, theme.body());
+                            cy += TooltipLayout.LINE + 1;
+                        }
                     }
-                    cy += TooltipLayout.LINE + TooltipLayout.ROW_GAP;
+                    cy += 2;
+                } else {
+                    TooltipPainter.drawBodyLine(graphics, font,
+                            translate("tooltip.exmodifier.entries_folded", model.affixes().size()),
+                            contentLeft, cy, 0xFFB9C0CC);
+                    cy += TooltipLayout.LINE + 2;
                 }
-                cy += 2;
             }
             if (model.slots().total() > 0) {
                 TooltipPainter.drawSeparator(graphics, contentLeft, cy, width, accent, fade);
@@ -257,7 +266,7 @@ public final class TooltipRenderer {
     }
 
     private static boolean isEquipment(ItemStack stack) {
-        return stack != null && (stack.getItem() instanceof Equipable);
+        return stack != null && stack.getItem() instanceof Equipable;
     }
 
     private static List<ClientTooltipComponent> natives(List<ClientTooltipComponent> components) {
@@ -276,17 +285,27 @@ public final class TooltipRenderer {
         return Math.max(font.width("◆ " + header), names);
     }
 
-    private static int maxChipRowWidth(List<List<Chip>> rows, Font font) {
+    private static int affixWidth(List<ExModifierTooltip.AffixDetail> affixes, boolean shiftDown, Font font) {
+        if (affixes == null || affixes.isEmpty()) return 0;
         int max = 0;
-        for (List<Chip> row : rows) {
-            int w = 0;
-            for (int i = 0; i < row.size(); i++) {
-                if (i > 0) w += TooltipLayout.CHIP_GAP;
-                w += TooltipLayout.chipWidth(font.width(row.get(i).label()));
+        for (ExModifierTooltip.AffixDetail detail : affixes) {
+            max = Math.max(max, TooltipLayout.chipWidth(font.width(detail.chip().label())));
+            if (shiftDown && !detail.attributes().isEmpty()) {
+                max = Math.max(max, font.width(String.join("   ", detail.attributes())) + 6);
             }
-            max = Math.max(max, w);
         }
         return max;
+    }
+
+    private static int affixHeight(List<ExModifierTooltip.AffixDetail> affixes, boolean shiftDown) {
+        if (affixes == null || affixes.isEmpty()) return 0;
+        if (!shiftDown) return TooltipLayout.LINE + 2;
+        int h = 0;
+        for (ExModifierTooltip.AffixDetail detail : affixes) {
+            h += TooltipLayout.LINE + 1;
+            if (!detail.attributes().isEmpty()) h += TooltipLayout.LINE + 1;
+        }
+        return h + 2;
     }
 
     private static int suitWidth(List<ExModifierTooltip.SuitSection> suits, Font font) {
@@ -323,6 +342,14 @@ public final class TooltipRenderer {
     private static String translate(String key) {
         try {
             if (I18n.exists(key)) return I18n.get(key);
+        } catch (Throwable ignored) {
+        }
+        return key;
+    }
+
+    private static String translate(String key, Object... args) {
+        try {
+            if (I18n.exists(key)) return I18n.get(key, args);
         } catch (Throwable ignored) {
         }
         return key;

@@ -19,10 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-/** Turns ExModifier catalog data into chips and suit sections for the themed tooltip. */
+/** Turns ExModifier catalog data into chips, suit sections and affix details for the themed tooltip. */
 public final class ExModifierTooltip {
     private static final int[] SLOT_COLORS = {0xFFDB5E71, 0xFFE2A834, 0xFF5E8ACF, 0xFF6FCB63};
-    private static final int ELEMENT_COLOR = 0xFFFF8A4A;
+    private static final int[] ELEMENT_COLORS = {0xFFFF8A4A, 0xFF5E8ACF, 0xFF6FCB63, 0xFFE060F0, 0xFF3AD4E8, 0xFFE2A834};
 
     private ExModifierTooltip() {}
 
@@ -33,6 +33,13 @@ public final class ExModifierTooltip {
             names = List.copyOf(names == null ? List.of() : names);
             total = Math.max(0, total);
             unlocked = Math.max(0, Math.min(total, unlocked));
+        }
+    }
+
+    /** One applied entry with its per-level attribute contributions for the Shift-expanded view. */
+    public record AffixDetail(Chip chip, List<String> attributes) {
+        public AffixDetail {
+            attributes = List.copyOf(attributes == null ? List.of() : attributes);
         }
     }
 
@@ -88,30 +95,40 @@ public final class ExModifierTooltip {
         Function<String, String> tr = translate == null ? key -> key : translate;
         List<Chip> chips = new ArrayList<>();
         for (AppliedModifierView view : views) {
-            Optional<ModifierEntryDefinition> definition = source.entry(view.entryId());
-            String key = definition.flatMap(ModifierEntryDefinition::descriptionKey)
-                    .orElse("tooltip.exmodifier.entry." + view.entryId().getPath());
-            String name = tr.apply(key);
-            if (name == null || name.isBlank() || name.equals(key)) name = pretty(view.entryId().getPath());
-            chips.add(new Chip(name + " Lv." + view.level(), colorFor(view.slotId())));
+            chips.add(affixChip(view, source, tr));
         }
         return List.copyOf(chips);
     }
 
-    public static List<Chip> elementChips(
-            java.util.Map<ResourceLocation, Integer> elements,
+    public static List<AffixDetail> affixes(
+            List<AppliedModifierView> views,
+            ExModifierCatalog catalog,
             Function<String, String> translate
     ) {
-        if (elements == null || elements.isEmpty()) return List.of();
+        if (views == null || views.isEmpty()) return List.of();
+        ExModifierCatalog source = catalog == null ? ExModifierCatalog.EMPTY : catalog;
         Function<String, String> tr = translate == null ? key -> key : translate;
-        List<Chip> chips = new ArrayList<>();
-        elements.forEach((id, amount) -> {
-            String key = "tooltip.exmodifier.element." + id.getPath();
-            String name = tr.apply(key);
-            if (name == null || name.isBlank() || name.equals(key)) name = pretty(id.getPath());
-            chips.add(new Chip(name + " " + amount, ELEMENT_COLOR));
-        });
-        return List.copyOf(chips);
+        List<AffixDetail> details = new ArrayList<>();
+        for (AppliedModifierView view : views) {
+            Optional<ModifierEntryDefinition> definition = source.entry(view.entryId());
+            List<String> attributes = definition
+                    .map(d -> d.attributes().stream()
+                            .map(spec -> formatAttribute(spec, view.level()))
+                            .filter(text -> !text.isBlank())
+                            .toList())
+                    .orElse(List.of());
+            details.add(new AffixDetail(affixChip(view, source, tr), attributes));
+        }
+        return List.copyOf(details);
+    }
+
+    private static Chip affixChip(AppliedModifierView view, ExModifierCatalog source, Function<String, String> tr) {
+        Optional<ModifierEntryDefinition> definition = source.entry(view.entryId());
+        String key = definition.flatMap(ModifierEntryDefinition::descriptionKey)
+                .orElse("tooltip.exmodifier.entry." + view.entryId().getPath());
+        String name = tr.apply(key);
+        if (name == null || name.isBlank() || name.equals(key)) name = pretty(view.entryId().getPath());
+        return new Chip(name + " Lv." + view.level(), colorFor(view.slotId()));
     }
 
     public static Optional<NameTag> qualityTag(
@@ -161,8 +178,7 @@ public final class ExModifierTooltip {
             for (SuitLevel level : suit.levels()) {
                 required = Math.max(required, level.pieces());
                 boolean active = owned >= level.pieces();
-                String text = formatLevel(level, tr);
-                bonuses.add(new SuitBonus(level.pieces(), text, active));
+                bonuses.add(new SuitBonus(level.pieces(), formatLevel(level, tr), active));
             }
             String key = "tooltip.exmodifier.suit." + suitId.getPath();
             String name = tr.apply(key);
@@ -173,8 +189,13 @@ public final class ExModifierTooltip {
     }
 
     public static String formatAttribute(AttributeSpec spec) {
+        return formatAttribute(spec, 1);
+    }
+
+    /** Formats one attribute with {@link AttributeSpec#amountAt(int)} so suit tiers scale with pieces. */
+    public static String formatAttribute(AttributeSpec spec, int level) {
         if (spec == null) return "";
-        double amount = spec.amount();
+        double amount = spec.amountAt(Math.max(1, level));
         boolean percent = spec.operation() != AttributeModifier.Operation.ADD_VALUE;
         String number = formatNumber(percent ? amount * 100.0 : amount);
         if (percent) number += "%";
@@ -186,7 +207,7 @@ public final class ExModifierTooltip {
         StringBuilder text = new StringBuilder();
         for (AttributeSpec spec : level.attributes()) {
             if (!text.isEmpty()) text.append(", ");
-            text.append(formatAttribute(spec));
+            text.append(formatAttribute(spec, level.pieces()));
         }
         if (text.isEmpty()) {
             String trigger = level.trigger() == null ? "" : pretty(level.trigger().getPath());
@@ -210,8 +231,6 @@ public final class ExModifierTooltip {
         int hash = Math.abs(slotId.get().getPath().hashCode());
         return SLOT_COLORS[hash % SLOT_COLORS.length];
     }
-
-    private static final int[] ELEMENT_COLORS = {0xFFFF8A4A, 0xFF5E8ACF, 0xFF6FCB63, 0xFFE060F0, 0xFF3AD4E8, 0xFFE2A834};
 
     private static int elementColor(ResourceLocation id) {
         if (id == null) return ELEMENT_COLORS[0];

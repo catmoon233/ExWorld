@@ -16,6 +16,7 @@ public record TooltipModel(
         Optional<ResourceLocation> qualityId,
         List<Chip> chips,
         ExModifierTooltip.SlotSection slots,
+        List<ExModifierTooltip.AffixDetail> affixes,
         List<ExModifierTooltip.SuitSection> suits,
         List<Component> bodyLines
 ) {
@@ -27,6 +28,7 @@ public record TooltipModel(
         qualityId = qualityId == null ? Optional.empty() : qualityId;
         chips = List.copyOf(chips == null ? List.of() : chips);
         slots = slots == null ? new ExModifierTooltip.SlotSection(0, 0, List.of()) : slots;
+        affixes = List.copyOf(affixes == null ? List.of() : affixes);
         suits = List.copyOf(suits == null ? List.of() : suits);
         bodyLines = List.copyOf(bodyLines == null ? List.of() : bodyLines);
     }
