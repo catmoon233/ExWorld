@@ -45,6 +45,22 @@ public final class ExModifierTooltip {
         }
     }
 
+    public static List<NameTag> elementTags(
+            java.util.Map<ResourceLocation, Integer> elements,
+            Function<String, String> translate
+    ) {
+        if (elements == null || elements.isEmpty()) return List.of();
+        Function<String, String> tr = translate == null ? key -> key : translate;
+        List<NameTag> tags = new ArrayList<>(elements.size());
+        elements.forEach((id, amount) -> {
+            String key = "tooltip.exmodifier.element." + id.getPath();
+            String name = tr.apply(key);
+            if (name == null || name.isBlank() || name.equals(key)) name = pretty(id.getPath());
+            tags.add(new NameTag(name + " " + amount, elementColor(id)));
+        });
+        return List.copyOf(tags);
+    }
+
     public static SlotSection slotSection(ItemStack stack, ExModifierCatalog catalog, Function<String, String> translate) {
         if (stack == null || stack.isEmpty()) return new SlotSection(0, 0, List.of());
         ExModifierCatalog source = catalog == null ? ExModifierCatalog.EMPTY : catalog;
@@ -193,6 +209,13 @@ public final class ExModifierTooltip {
         if (slotId == null || slotId.isEmpty()) return SLOT_COLORS[0];
         int hash = Math.abs(slotId.get().getPath().hashCode());
         return SLOT_COLORS[hash % SLOT_COLORS.length];
+    }
+
+    private static final int[] ELEMENT_COLORS = {0xFFFF8A4A, 0xFF5E8ACF, 0xFF6FCB63, 0xFFE060F0, 0xFF3AD4E8, 0xFFE2A834};
+
+    private static int elementColor(ResourceLocation id) {
+        if (id == null) return ELEMENT_COLORS[0];
+        return ELEMENT_COLORS[Math.abs(id.getPath().hashCode()) % ELEMENT_COLORS.length];
     }
 
     static String pretty(String path) {

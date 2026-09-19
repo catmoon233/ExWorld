@@ -6,8 +6,8 @@ import java.util.function.ToIntFunction;
 /** Shared geometry for the themed tooltip. Numbers follow EnhancedTooltips header spacing. */
 public final class TooltipLayout {
     public static final int PAD = 10;
-    public static final int TITLE_OFFSET = 30;
-    public static final int SLOT = 20;
+    public static final int TITLE_OFFSET = 34;
+    public static final int SLOT = 24;
     public static final int ICON = 16;
     public static final int LINE = 9;
     public static final int CHIP_PAD_H = 3;

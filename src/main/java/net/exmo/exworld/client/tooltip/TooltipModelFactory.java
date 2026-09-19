@@ -42,6 +42,7 @@ public final class TooltipModelFactory {
         Function<String, String> translate = TooltipModelFactory::translate;
         List<NameTag> tags = new ArrayList<>();
         tags.add(defaultTag(item));
+        tags.addAll(ExModifierTooltip.elementTags(ExModifierApi.elementsOn(item), translate));
 
         ExModifierCatalog catalog = ExModifierCatalog.current();
         Optional<net.minecraft.resources.ResourceLocation> quality = ExModifierApi.qualityOn(item);
@@ -50,7 +51,6 @@ public final class TooltipModelFactory {
         List<AppliedModifierView> onItem = ExModifierApi.modifiersOn(item);
         List<AppliedModifierView> equipped = wearer == null ? onItem : ExModifierApi.modifiersOnEquipped(wearer);
         List<Chip> chips = new ArrayList<>(ExModifierTooltip.chips(onItem, catalog, translate));
-        chips.addAll(ExModifierTooltip.elementChips(ExModifierApi.elementsOn(item), translate));
 
         List<VanillaLineFilter.Line> lines = new ArrayList<>();
         if (rawLines != null) {

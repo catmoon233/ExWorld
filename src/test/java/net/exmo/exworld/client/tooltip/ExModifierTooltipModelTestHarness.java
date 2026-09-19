@@ -46,6 +46,12 @@ public final class ExModifierTooltipModelTestHarness {
             ExModifierTooltip.SlotSection emptySlots = ExModifierTooltip.slotSection(
                     null, ExModifierCatalog.current(), key -> key);
             if (emptySlots.total() != 0) throw new AssertionError("null stack must have no slot section");
+            List<NameTag> elementTags = ExModifierTooltip.elementTags(
+                    java.util.Map.of(ResourceLocation.fromNamespaceAndPath("exmodifier", "fire"), 3),
+                    key -> "tooltip.exmodifier.element.fire".equals(key) ? "Fire" : key);
+            if (elementTags.size() != 1 || !"Fire 3".equals(elementTags.getFirst().label())) {
+                throw new AssertionError("element should become a name tag with amount");
+            }
             if (sections.size() != 1) throw new AssertionError("expected blades suit section");
             ExModifierTooltip.SuitSection section = sections.getFirst();
             if (!"Blades".equals(section.name())) throw new AssertionError("suit name");
