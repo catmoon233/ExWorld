@@ -356,3 +356,27 @@ tasks.register('playerProgressPersistenceTest', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.progress.PlayerProgressPersistenceTestHarness'
 }
+
+tasks.register('shipHullCodecTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ship.ShipHullCodecTestHarness'
+}
+
+tasks.register('shipUpgradeRulesTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ship.ShipUpgradeRulesTestHarness'
+}
+
+tasks.register('shipRaycastTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ship.ShipRaycastTestHarness'
+}
+
+tasks.register('kinematicMoverTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ship.KinematicMoverTestHarness'
+}

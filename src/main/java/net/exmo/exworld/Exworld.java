@@ -9,7 +9,7 @@ import net.exmo.exworld.battle.BattleSystem;
 import net.exmo.exworld.battle.attribute.BattleAttributes;
 import net.exmo.exworld.dungeon.DungeonSystem;
 import net.exmo.exworld.progress.PlayerProgressSystem;
-import net.minecraft.client.gui.screens.worldselection.EditWorldScreen;
+import net.exmo.exworld.ship.ShipSystem;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -33,6 +33,7 @@ public final class Exworld {
         BattleSystem.registerEvents();
         DungeonSystem.registerEvents();
         PlayerProgressSystem.registerEvents();
+        ShipSystem.registerEvents();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldMapClient.register(modBus);
         }

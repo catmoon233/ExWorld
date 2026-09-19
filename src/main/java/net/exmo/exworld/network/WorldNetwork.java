@@ -17,6 +17,7 @@ public final class WorldNetwork {
         var registrar = event.registrar("1");
         BattleNetwork.register(registrar);
         QuestNetwork.register(registrar);
+        ShipNetwork.register(registrar);
         registrar.playToServer(RequestWorldMapPayload.TYPE, RequestWorldMapPayload.STREAM_CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) sendSnapshot(player, WorldSystem.snapshot(player));
         });

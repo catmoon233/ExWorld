@@ -1,4 +1,4 @@
 {
   "replace": false,
-  "values": ["exworld:travel_anchor"]
+  "values": ["exworld:travel_anchor", "exworld:ship_core", "exworld:ship_helm"]
 }
