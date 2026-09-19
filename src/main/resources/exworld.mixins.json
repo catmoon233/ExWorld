@@ -18,7 +18,8 @@
     "client.MouseHandlerMixin",
     "client.SoundEngineMixin",
     "client.SectionOcclusionGraphMixin",
-    "client.SpellBarOverlayMixin"
+    "client.SpellBarOverlayMixin",
+    "client.GuiGraphicsTooltipMixin"
   ],
   "injectors": {
     "defaultRequire": 1
