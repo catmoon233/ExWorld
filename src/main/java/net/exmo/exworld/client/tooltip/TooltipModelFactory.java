@@ -62,7 +62,7 @@ public final class TooltipModelFactory {
         return new TooltipModel(
                 item.isEmpty() ? Component.empty() : item.getHoverName(),
                 tags,
-                translate.apply(rarityKey(rarity)),
+                quality.isPresent() ? "" : translate.apply(rarityKey(rarity)),
                 rarity,
                 quality,
                 chips,

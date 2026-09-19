@@ -119,7 +119,7 @@ public final class TooltipRenderer {
         int screenH = minecraft.getWindow().getGuiScaledHeight();
         Vector2ic pos = positioner.positionTooltip(screenW, screenH, mouseX, mouseY, panelW, panelH);
         int x = pos.x();
-        int y = pos.y();
+        int y = Math.max(0, pos.y() - 14);
         if (x < 6) x = 6;
         if (y < 6) y = 6;
         if (x + panelW > screenW - 6) x = Math.max(6, screenW - 6 - panelW);
@@ -134,11 +134,8 @@ public final class TooltipRenderer {
         // ---- Header: slot + animated icon + title + tags + rarity ----
         int slotX = x + TooltipLayout.PAD;
         int slotY = y + TooltipLayout.PAD + (headerH - TooltipLayout.SLOT) / 2;
-        TooltipPainter.drawSlot(graphics, slotX, slotY, theme, fade);
         int iconCenterX = slotX + TooltipLayout.SLOT / 2;
         int iconCenterY = slotY + TooltipLayout.SLOT / 2;
-        TooltipPainter.drawDiamondFrame(graphics, iconCenterX, iconCenterY, 12,
-                RarityPalette.lerp(theme.borderInner(), theme.border(), 0.6f));
         TooltipPainter.drawAnimatedItem(graphics, stack, iconCenterX, iconCenterY,
                 TooltipCapture.itemTimeMs(), isEquipment(stack));
 
@@ -147,14 +144,14 @@ public final class TooltipRenderer {
         int textX = contentLeft + TooltipLayout.TITLE_OFFSET;
         int titleY = slotY + 2;
         int rarityY = titleY + TooltipLayout.LINE + 2;
-        int row2Y = rarityY + TooltipLayout.LINE + 2;
+        int row2Y = model.rarityLabel().isEmpty() ? rarityY : rarityY + TooltipLayout.LINE + 2;
 
         if (titleW > width) {
             graphics.enableScissor(textX, titleY - 1, contentRight, titleY + TooltipLayout.LINE + 1);
-            graphics.drawString(font, model.title(), textX, titleY, theme.name(), true);
+            graphics.drawString(font, Component.literal(model.title().getString()), textX, titleY, theme.name(), true);
             graphics.disableScissor();
         } else {
-            graphics.drawString(font, model.title(), textX, titleY, theme.name(), true);
+            graphics.drawString(font, Component.literal(model.title().getString()), textX, titleY, theme.name(), true);
         }
 
         int tagX = textX + titleW + TooltipLayout.TAG_GAP;
@@ -173,7 +170,9 @@ public final class TooltipRenderer {
                         + TooltipLayout.TAG_GAP;
             }
         }
-        graphics.drawString(font, model.rarityLabel(), textX, rarityY, accent, false);
+        if (!model.rarityLabel().isEmpty()) {
+            graphics.drawString(font, model.rarityLabel(), textX, rarityY, accent, false);
+        }
 
         // ---- Content: chips / suits / body / natives inside a scrolling viewport ----
         int contentTop = y + TooltipLayout.PAD + headerH + 4;

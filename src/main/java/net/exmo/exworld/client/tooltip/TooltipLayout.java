@@ -14,8 +14,8 @@ public final class TooltipLayout {
     public static final int CHIP_GAP = 3;
     public static final int TAG_GAP = 3;
     public static final int ROW_GAP = 3;
-    public static final int MAX_TEXT = 220;
-    public static final int MAX_BODY = 180;
+    public static final int MAX_TEXT = 240;
+    public static final int MAX_BODY = 220;
     public static final int MIN_WIDTH = 120;
 
     private TooltipLayout() {}
