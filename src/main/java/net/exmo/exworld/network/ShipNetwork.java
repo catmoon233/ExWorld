@@ -24,6 +24,8 @@ public final class ShipNetwork {
                 (payload, context) -> ShipClient.overlay(payload.a(), payload.b(), payload.present()));
         registrar.playToClient(ShipUpgradeScreenPayload.TYPE, ShipUpgradeScreenPayload.STREAM_CODEC,
                 (payload, context) -> ShipClient.openUpgrade(payload.entityId(), payload.template(), payload.variantIds(), payload.variantHulls()));
+        registrar.playToClient(ShipPositionPayload.TYPE, ShipPositionPayload.STREAM_CODEC,
+                (payload, context) -> ShipClient.applyPosition(payload.entityId(), payload.x(), payload.y(), payload.z()));
         registrar.playToServer(ShipSaveTemplatePayload.TYPE, ShipSaveTemplatePayload.STREAM_CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) ShipSystem.saveTemplate(player, payload.template());
         });
@@ -60,6 +62,12 @@ public final class ShipNetwork {
     public static void broadcastDelta(ServerLevel level, ShipEntity ship, int x, int y, int z, String block) {
         PacketDistributor.sendToPlayersTrackingEntity(ship,
                 new ShipHullDeltaPayload(ship.getId(), ship.hull().revision(), x, y, z, block));
+    }
+
+    /** 平滑位置校正：客户端偏差较大时 lerp 回权威位置，而不是硬跳。 */
+    public static void syncPosition(ShipEntity ship) {
+        PacketDistributor.sendToPlayersTrackingEntity(ship,
+                new ShipPositionPayload(ship.getId(), ship.getX(), ship.getY(), ship.getZ()));
     }
 
     public static void sendUpgradeScreen(ServerPlayer player, int entityId, byte[] template, java.util.List<String> ids, java.util.List<byte[]> hulls) {

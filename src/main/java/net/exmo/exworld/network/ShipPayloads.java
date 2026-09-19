@@ -159,3 +159,11 @@ record ShipUpgradeScreenPayload(int entityId, byte[] template, List<String> vari
     }
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 }
+
+record ShipPositionPayload(int entityId, double x, double y, double z) implements CustomPacketPayload {
+    public static final Type<ShipPositionPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Exworld.MODID, "ship_position"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, ShipPositionPayload> STREAM_CODEC = StreamCodec.of(
+            (buffer, payload) -> { buffer.writeVarInt(payload.entityId); buffer.writeDouble(payload.x); buffer.writeDouble(payload.y); buffer.writeDouble(payload.z); },
+            buffer -> new ShipPositionPayload(buffer.readVarInt(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble()));
+    @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+}

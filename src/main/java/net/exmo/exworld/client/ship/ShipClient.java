@@ -66,22 +66,48 @@ public final class ShipClient {
         if (entity instanceof ShipEntity ship) ship.setBlock(x, y, z, block);
     }
 
+    private static final float TURN_RATE = 2.5f;
+    private static float shipYaw;
+    private static int shipEntityId = -1;
+
     private static void tick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof LocalPlayer player)) return;
         if (player.getVehicle() instanceof ShipEntity ship) {
+            // 上船时用玩家当前朝向初始化驾驶方向
+            if (ship.getId() != shipEntityId) {
+                shipEntityId = ship.getId();
+                shipYaw = player.getYRot();
+            }
             int flags = 0;
             var options = Minecraft.getInstance().options;
             if (options.keyUp.isDown()) flags |= 1;
             if (options.keyDown.isDown()) flags |= 2;
-            if (options.keyLeft.isDown()) flags |= 4;
-            if (options.keyRight.isDown()) flags |= 8;
             if (options.keyJump.isDown()) flags |= 16;
             if (options.keySprint.isDown()) flags |= 32;
-            ship.driveLocal(flags, player.getYRot());
-            ShipNetwork.drive(ship.getId(), flags, player.getYRot());
+            // 汽车式掌舵：A/D 转方向，W/S 油门/倒车，跳跃/冲刺升降
+            if (options.keyLeft.isDown()) shipYaw -= TURN_RATE;
+            if (options.keyRight.isDown()) shipYaw += TURN_RATE;
+            ship.driveLocal(flags, shipYaw);
+            ShipNetwork.drive(ship.getId(), flags, shipYaw);
             return;
         }
+        shipEntityId = -1;
         snapAboard(player);
+    }
+
+    public static void applyPosition(int entityId, double x, double y, double z) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) return;
+        Entity entity = minecraft.level.getEntity(entityId);
+        if (!(entity instanceof ShipEntity ship)) return;
+        double dx = x - ship.getX();
+        double dy = y - ship.getY();
+        double dz = z - ship.getZ();
+        double distanceSq = dx * dx + dy * dy + dz * dz;
+        if (distanceSq > 0.04) {
+            // 偏差超过 0.2 块才拉回，用 lerp 平滑校正而不是硬跳
+            ship.lerpTo(x, y, z, ship.getYRot(), ship.getXRot(), 5);
+        }
     }
 
     private static void snapAboard(LocalPlayer player) {

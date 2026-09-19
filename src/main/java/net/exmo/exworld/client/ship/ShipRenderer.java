@@ -1,6 +1,7 @@
 package net.exmo.exworld.client.ship;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.exmo.exworld.ship.assembly.ShipBlockStates;
 import net.exmo.exworld.ship.entity.ShipEntity;
 import net.exmo.exworld.ship.model.ShipBlock;
@@ -31,11 +32,15 @@ public final class ShipRenderer extends EntityRenderer<ShipEntity> {
     @Override
     public void render(ShipEntity entity, float yaw, float partial, PoseStack pose, MultiBufferSource buffers, int light) {
         if (entity.hull().isEmpty()) return;
-        cache.ensure(entity, dispatcher);
         pose.pushPose();
         Vec3 camera = entity.position();
-        pose.translate(0, 0, 0);
         AABB cameraBox = entity.getBoundingBox();
+        // 掌舵转向：绕船体水平中心按驾驶 yaw 旋转外观
+        double centerX = entity.hull().sizeX() / 2.0;
+        double centerZ = entity.hull().sizeZ() / 2.0;
+        pose.translate(centerX, 0, centerZ);
+        pose.mulPose(Axis.YP.rotationDegrees(-entity.getYRot()));
+        pose.translate(-centerX, 0, -centerZ);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         ShipView view = new ShipView(entity.hull());
         for (ShipBlock block : entity.hull().blocks()) {

@@ -13,7 +13,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
-import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -109,6 +108,9 @@ public class ShipEntity extends Entity {
     public void beginDriving(ServerPlayer player, int helmX, int helmY, int helmZ) {
         rideLocal = new Vec3(helmX + 0.5, helmY + 1.0, helmZ + 0.5);
         driverId = player.getUUID();
+        driveYaw = player.getYRot();
+        entityData.set(YAW, driveYaw);
+        setYRot(driveYaw);
         player.startRiding(this);
     }
 
@@ -127,6 +129,9 @@ public class ShipEntity extends Entity {
         this.driveYaw = yaw;
         setYRot(yaw);
     }
+
+    public float driveYaw() { return driveYaw; }
+
 
     public void pressButton(int packed, String releasedKey) {
         buttons.put(packed, new Button(10, releasedKey));
@@ -215,14 +220,14 @@ public class ShipEntity extends Entity {
         if (!level().isClientSide()) broadcastMove(delta);
     }
 
-    /** 每 tick 发相对移动包，客户端 lerp 插值，避免位置跳变；定期 teleport 校正漂移。 */
+    /** 每 tick 发相对移动包，客户端 lerp 插值；每 20 tick 用自定义包做平滑权威校正（不再硬 teleport）。 */
     private void broadcastMove(Vec3 delta) {
         if (delta.lengthSqr() < 1.0E-10) return;
         short sx = (short) Mth.clamp(delta.x * 4096.0, -32768, 32767);
         short sy = (short) Mth.clamp(delta.y * 4096.0, -32768, 32767);
         short sz = (short) Mth.clamp(delta.z * 4096.0, -32768, 32767);
         sendToTrackers(new ClientboundMoveEntityPacket.Pos(getId(), sx, sy, sz, onGround()));
-        if (tickCount % 20 == 0) sendToTrackers(new ClientboundTeleportEntityPacket(this));
+        if (tickCount % 20 == 0) ShipNetwork.syncPosition(this);
     }
 
     private void sendToTrackers(net.minecraft.network.protocol.Packet<?> packet) {
@@ -246,6 +251,12 @@ public class ShipEntity extends Entity {
             double targetZ = steering ? player.getZ() : snapped.z;
             double targetY = rising ? carried.y : snapped.y;
             if (!rising && Math.abs(carried.y - snapped.y) >= 1.5) targetY = carried.y;
+            // 低频兜底校正：客户端每 tick 本地跟随，服务端只在偏差较大时介入，避免每 tick teleport 打断客户端
+            boolean needsSync = player.tickCount % 4 == 0
+                    || Math.abs(player.getX() - targetX) > 0.25
+                    || Math.abs(player.getZ() - targetZ) > 0.25
+                    || (!rising && Math.abs(player.getY() - targetY) > 0.1);
+            if (!needsSync) continue;
             if (player instanceof ServerPlayer server) server.teleportTo(targetX, targetY, targetZ);
             else player.setPos(targetX, targetY, targetZ);
             player.setOnGround(!rising);
