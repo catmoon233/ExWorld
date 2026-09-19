@@ -2,9 +2,10 @@ package net.exmo.exworld.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.exmo.exworld.world.generation.IslandLayout;
+import net.exmo.exworld.world.model.ChunkGroupBounds;
 import net.exmo.exworld.Config;
 import net.exmo.exworld.client.battle.BattleClient;
-import net.exmo.exworld.world.model.ChunkGroupBounds;
 import net.exmo.exworld.world.model.ChunkGroupShape;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -35,8 +36,20 @@ public final class WorldBoundaryRenderer {
         pose.pushPose();
         pose.translate(-camera.x, -camera.y, -camera.z);
         boolean legacy = Config.legacyRegionBoundary;
-        double bottom = legacy ? minecraft.level.getMinBuildHeight() : minecraft.player.getY() - 0.05;
-        double top = legacy ? minecraft.level.getMaxBuildHeight() : minecraft.player.getY() + 1.5;
+        double bottom;
+        double top;
+        if (legacy) {
+            bottom = minecraft.level.getMinBuildHeight();
+            top = minecraft.level.getMaxBuildHeight();
+        } else if (ClientChunkGroupState.archipelago()) {
+            // Island worlds keep the translucent wall on a fixed height band instead of following the player up and down.
+            bottom = Math.max(minecraft.level.getMinBuildHeight(),
+                    IslandLayout.DEFAULT_MIN_Y - IslandLayout.DEFAULT_THICKNESS_MAX - 8);
+            top = Math.min(minecraft.level.getMaxBuildHeight(), IslandLayout.DEFAULT_MAX_Y + 8);
+        } else {
+            bottom = minecraft.player.getY() - 0.05;
+            top = minecraft.player.getY() + 1.5;
+        }
         double thickness = 0.28;
         float alpha = legacy ? 0.56F : 0.28F;
 

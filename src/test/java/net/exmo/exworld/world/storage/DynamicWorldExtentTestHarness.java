@@ -12,7 +12,7 @@ import java.util.List;
 public final class DynamicWorldExtentTestHarness {
     public static void main(String[] args) {
         WorldStateData state = new WorldStateData();
-        state.initialize(0x4558574F524C44L);
+        state.initialize(0x4558574F524C44L, false);
         require(!state.archipelagoSpawnApplied(), "new worlds have not applied origin spawn yet");
         HolderLookup.Provider lookup = HolderLookup.Provider.create(java.util.stream.Stream.of());
         CompoundTag freshTag = state.save(new CompoundTag(), lookup);

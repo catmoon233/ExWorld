@@ -38,29 +38,39 @@ public final class WorldLayoutGenerator {
         return generate(seed, groupChunks, automaticGroups, Config.zoneTargetSpan);
     }
 
-    /** Generates either biome zones (with island halos) or the manual-mode singleton starting partition. */
+    /** Generates biome zones (with island halos), one island-connected region per island, or the manual singleton partition. */
     public static GeneratedLayout generate(long seed, int groupChunks, boolean automaticGroups, int zoneTargetSpan) {
+        return generate(seed, groupChunks, automaticGroups, zoneTargetSpan, false);
+    }
+
+    /** In archipelago mode every tile joins its nearest island's unnamed region; island centres keep their kind label. */
+    public static GeneratedLayout generate(long seed, int groupChunks, boolean automaticGroups, int zoneTargetSpan,
+                                           boolean archipelago) {
         Random random = new Random(seed ^ 0x45_58_57_4FL);
         WorldBiome[][] biomeMap = growBiomes(random);
-        GroupLayout groups = buildGroups(random, biomeMap, Math.max(8, zoneTargetSpan));
-        int[][] regionMap = groups.owners;
-        Map<Integer, RegionDraft> drafts = groups.drafts;
         List<WorldTile> tiles = new ArrayList<>(DIAMETER * DIAMETER);
-
-        for (int gz = 0; gz < DIAMETER; gz++) {
-            for (int gx = 0; gx < DIAMETER; gx++) {
-                int x = gx + WorldDimensions.MAP_MIN;
-                int z = gz + WorldDimensions.MAP_MIN;
-                int regionIndex = regionMap[gz][gx];
-                RegionDraft region = drafts.get(regionIndex);
-                WorldBiome biome = biomeMap[gz][gx];
-                String tileId = "tile_" + signed(x) + "_" + signed(z);
-                region.tileIds.add(tileId);
-                String description = biome.displayName() + "延伸至此，" + biomeDescription(biome, seed, x, z);
-                tiles.add(new WorldTile(tileId, x, z, region.id, region.name, biome.mapColor(),
-                        WorldDimensions.groupCenter(x, groupChunks), WorldDimensions.groupCenter(z, groupChunks),
-                        x == 0 && z == 0,
-                        biome.id(), description, "暂无已知据点", biome.resources()));
+        Map<Integer, RegionDraft> drafts;
+        if (archipelago) {
+            drafts = buildIslandRegions(seed, groupChunks, biomeMap, tiles);
+        } else {
+            GroupLayout groups = buildGroups(random, biomeMap, Math.max(8, zoneTargetSpan));
+            int[][] regionMap = groups.owners;
+            drafts = groups.drafts;
+            for (int gz = 0; gz < DIAMETER; gz++) {
+                for (int gx = 0; gx < DIAMETER; gx++) {
+                    int x = gx + WorldDimensions.MAP_MIN;
+                    int z = gz + WorldDimensions.MAP_MIN;
+                    int regionIndex = regionMap[gz][gx];
+                    RegionDraft region = drafts.get(regionIndex);
+                    WorldBiome biome = biomeMap[gz][gx];
+                    String tileId = "tile_" + signed(x) + "_" + signed(z);
+                    region.tileIds.add(tileId);
+                    String description = biome.displayName() + "延伸至此，" + biomeDescription(biome, seed, x, z);
+                    tiles.add(new WorldTile(tileId, x, z, region.id, region.name, biome.mapColor(),
+                            WorldDimensions.groupCenter(x, groupChunks), WorldDimensions.groupCenter(z, groupChunks),
+                            x == 0 && z == 0,
+                            biome.id(), description, "暂无已知据点", biome.resources()));
+                }
             }
         }
 
@@ -106,6 +116,66 @@ public final class WorldLayoutGenerator {
 
     private static long pack(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }
 
+    /** One unnamed region per island; a BFS from every island centre connects each tile to its nearest island region. */
+    private static Map<Integer, RegionDraft> buildIslandRegions(long seed, int groupChunks, WorldBiome[][] biomeMap,
+                                                                List<WorldTile> tiles) {
+        List<RegionDraft> drafts = new ArrayList<>();
+        Map<Long, Integer> indexByCell = new HashMap<>();
+        int[][] owner = emptyOwner();
+        ArrayDeque<Cell> queue = new ArrayDeque<>();
+        IslandLayout.Settings settings = IslandLayout.boundSettings();
+        int minBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MIN, groupChunks)
+                - WorldDimensions.groupBlocks(groupChunks) / 2;
+        int maxBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MAX_EXCLUSIVE - 1, groupChunks)
+                + WorldDimensions.groupBlocks(groupChunks) / 2;
+        for (IslandLayout.Island island : IslandLayout.islandsOverlappingBlocks(seed, settings, minBlock, minBlock,
+                maxBlock, maxBlock)) {
+            int mapX = WorldDimensions.groupCoordinate(island.centerX(), groupChunks);
+            int mapZ = WorldDimensions.groupCoordinate(island.centerZ(), groupChunks);
+            if (mapX < WorldDimensions.MAP_MIN || mapX >= WorldDimensions.MAP_MAX_EXCLUSIVE
+                    || mapZ < WorldDimensions.MAP_MIN || mapZ >= WorldDimensions.MAP_MAX_EXCLUSIVE) continue;
+            int gx = mapX - WorldDimensions.MAP_MIN;
+            int gz = mapZ - WorldDimensions.MAP_MIN;
+            IslandLayout.Island seedIsland = island;
+            long cellKey = pack(island.cellX(), island.cellZ());
+            int index = indexByCell.computeIfAbsent(cellKey, ignored -> {
+                drafts.add(new RegionDraft("island_" + signed(seedIsland.cellX()) + "_" + signed(seedIsland.cellZ()),
+                        "", seed ^ cellKey));
+                return drafts.size() - 1;
+            });
+            if (owner[gz][gx] >= 0) continue;
+            owner[gz][gx] = index;
+            queue.add(new Cell(gx, gz));
+        }
+        while (!queue.isEmpty()) {
+            Cell current = queue.removeFirst();
+            for (int[] direction : DIRECTIONS) {
+                int nx = current.x + direction[0];
+                int nz = current.z + direction[1];
+                if (nx < 0 || nz < 0 || nx >= DIAMETER || nz >= DIAMETER || owner[nz][nx] >= 0) continue;
+                owner[nz][nx] = owner[current.z][current.x];
+                queue.add(new Cell(nx, nz));
+            }
+        }
+        Map<Integer, RegionDraft> draftsByIndex = new LinkedHashMap<>();
+        for (int i = 0; i < drafts.size(); i++) draftsByIndex.put(i, drafts.get(i));
+        for (int gz = 0; gz < DIAMETER; gz++) {
+            for (int gx = 0; gx < DIAMETER; gx++) {
+                int x = gx + WorldDimensions.MAP_MIN;
+                int z = gz + WorldDimensions.MAP_MIN;
+                WorldBiome biome = biomeMap[gz][gx];
+                String tileId = "tile_" + signed(x) + "_" + signed(z);
+                RegionDraft region = draftsByIndex.get(owner[gz][gx]);
+                region.tileIds.add(tileId);
+                tiles.add(new WorldTile(tileId, x, z, region.id, region.name, biome.mapColor(),
+                        WorldDimensions.groupCenter(x, groupChunks), WorldDimensions.groupCenter(z, groupChunks),
+                        x == 0 && z == 0,
+                        biome.id(), biome.displayName() + "延伸至此，" + biomeDescription(biome, seed, x, z),
+                        "暂无已知据点", biome.resources()));
+            }
+        }
+        return draftsByIndex;
+    }
     private static WorldBiome[][] growBiomes(Random random) {
         WorldBiome[] seedProfiles = biomeSeedProfiles();
         int[][] owner = emptyOwner();

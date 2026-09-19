@@ -25,7 +25,7 @@ import java.util.HashSet;
 import java.util.UUID;
 
 public final class WorldStateData extends SavedData {
-    private static final int LAYOUT_VERSION = 8;
+    private static final int LAYOUT_VERSION = 9;
     public static final Factory<WorldStateData> FACTORY = new Factory<>(WorldStateData::new, WorldStateData::load);
     private final Map<String, WorldTile> tiles = new LinkedHashMap<>();
     private final Map<String, Region> regions = new LinkedHashMap<>();
@@ -38,23 +38,26 @@ public final class WorldStateData extends SavedData {
     private int groupChunks = WorldDimensions.DEFAULT_GROUP_CHUNKS;
     private final BitSet generatedChunkBits = new BitSet();
     private boolean pregenerationEnabled;
-    /** New worlds begin with biome-generated zones; the editor can still switch to manual singleton groups. */
+    /** New worlds begin with generated zones; the editor can still switch to manual singleton groups. */
     private boolean manualGroups = false;
     /** Monotonic edit token so concurrent remote editors cannot silently overwrite one another. */
     private long groupRevision;
     private long worldSeed;
+    private boolean archipelago;
     private boolean archipelagoSpawnApplied;
     private int layoutVersion = LAYOUT_VERSION;
 
-    public void initialize(long seed) {
+    public void initialize(long seed, boolean archipelagoWorld) {
         worldSeed = seed;
+        archipelago = archipelagoWorld;
         if (layoutVersion != LAYOUT_VERSION) {
             tiles.clear();
             regions.clear();
             generatedChunkBits.clear();
         }
         if (!tiles.isEmpty()) return;
-        WorldLayoutGenerator.GeneratedLayout layout = WorldLayoutGenerator.generate(seed, groupChunks, !manualGroups);
+        WorldLayoutGenerator.GeneratedLayout layout = WorldLayoutGenerator.generate(seed, groupChunks, !manualGroups,
+                Config.zoneTargetSpan, archipelago);
         layout.tiles().forEach(tile -> tiles.put(tile.id(), tile));
         layout.regions().forEach(region -> regions.put(region.id(), region));
         totalChunks = tiles.size() * WorldDimensions.chunksPerGroup(groupChunks);
@@ -149,7 +152,7 @@ public final class WorldStateData extends SavedData {
     /** Enabling preserves existing generated groups; disabling deliberately restores the generated partition. */
     public void setManualGroups(long seed, boolean enabled) {
         if (manualGroups == enabled) return;
-        if (!enabled) replaceLayout(WorldLayoutGenerator.generate(seed, groupChunks, true));
+        if (!enabled) replaceLayout(WorldLayoutGenerator.generate(seed, groupChunks, true, Config.zoneTargetSpan, archipelago));
         manualGroups = enabled;
         groupRevision++;
         setDirty();
@@ -352,6 +355,7 @@ public final class WorldStateData extends SavedData {
         tag.putBoolean("manual_groups", manualGroups);
         tag.putLong("group_revision", groupRevision);
         tag.putLong("world_seed", worldSeed);
+        tag.putBoolean("archipelago", archipelago);
         tag.putBoolean("archipelago_spawn_applied", archipelagoSpawnApplied);
         return tag;
     }
@@ -407,6 +411,7 @@ public final class WorldStateData extends SavedData {
         data.manualGroups = tag.contains("manual_groups") && tag.getBoolean("manual_groups");
         data.groupRevision = tag.getLong("group_revision");
         data.worldSeed = tag.getLong("world_seed");
+        data.archipelago = tag.contains("archipelago") && tag.getBoolean("archipelago");
         data.archipelagoSpawnApplied = tag.contains("archipelago_spawn_applied")
                 ? tag.getBoolean("archipelago_spawn_applied")
                 : !data.tiles.isEmpty();

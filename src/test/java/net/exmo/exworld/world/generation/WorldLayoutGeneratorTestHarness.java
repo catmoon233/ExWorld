@@ -82,6 +82,25 @@ public final class WorldLayoutGeneratorTestHarness {
                 "manual mode must not generate automatic multi-tile groups");
         require(manual.regions().stream().noneMatch(net.exmo.exworld.world.model.Region::configured),
                 "manual singleton groups must remain hidden from M-map group overlays until configured");
+        var islandLayout = WorldLayoutGenerator.generate(seed, groupChunks, true, 48, true);
+        require(islandLayout.tiles().size() == WorldDimensions.MAP_SIZE * WorldDimensions.MAP_SIZE,
+                "island world must still cover the full atlas");
+        require(islandLayout.regions().stream().allMatch(region -> region.name().isBlank()),
+                "island regions must keep empty names so auto names cannot cover island labels");
+        require(islandLayout.regions().stream().noneMatch(region -> region.id().startsWith("biome_group_")),
+                "island world must not reuse biome-zone regions");
+        Map<String, WorldTile> islandById = new HashMap<>();
+        islandLayout.tiles().forEach(tile -> islandById.put(tile.id(), tile));
+        for (Region region : islandLayout.regions()) {
+            require(connected(region.tileIds(), islandById), "island region must stay connected: " + region.id());
+        }
+        int islandLabelled = 0;
+        for (WorldTile tile : islandLayout.tiles()) {
+            if (tile.sites().equals("暂无已知据点")) continue;
+            islandLabelled++;
+            require(tile.regionId().startsWith("island_"), "labelled island must sit in an island region at " + tile.id());
+        }
+        require(islandLabelled > 0, "island world map needs labelled island centres");
         System.out.println("WORLD_LAYOUT_TEST_OK tiles=" + layout.tiles().size() + " regions="
                 + layout.regions().size() + " biomes=" + biomeSizes);
     }

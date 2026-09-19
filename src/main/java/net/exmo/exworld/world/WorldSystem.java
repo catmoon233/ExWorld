@@ -277,7 +277,9 @@ public final class WorldSystem {
                 WorldNetwork.sendActiveChunkGroup(player, chunkGroupShape(state, entered));
             }
             if (ChunkGroupTransition.shouldShowSubtitle(previousGroup, enteredGroup)) {
-                String groupName = state.region(enteredGroup).map(net.exmo.exworld.world.model.Region::name).orElse(entered.name());
+                String groupName = state.region(enteredGroup).map(net.exmo.exworld.world.model.Region::name)
+                        .filter(name -> !name.isBlank())
+                        .orElseGet(() -> "暂无已知据点".equals(entered.sites()) ? entered.biome().displayName() : entered.sites());
                 net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
                         new SubtitlePayload(Component.literal(groupName), Component.literal(entered.description()), 70, 0xFFD6B56A));
             }
@@ -431,7 +433,7 @@ public final class WorldSystem {
 
     private static WorldStateData state(MinecraftServer server) {
         WorldStateData state = STORE.get(server);
-        state.initialize(server.overworld().getSeed());
+        state.initialize(server.overworld().getSeed(), ArchipelagoPresets.isArchipelago(server.overworld()));
         return state;
     }
 }

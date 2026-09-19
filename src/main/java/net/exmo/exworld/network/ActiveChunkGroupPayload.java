@@ -11,12 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Small clientbound shape update sent only when the player enters another region. */
-public record ActiveChunkGroupPayload(ChunkGroupShape shape) implements CustomPacketPayload {
+public record ActiveChunkGroupPayload(ChunkGroupShape shape, boolean archipelago) implements CustomPacketPayload {
     public static final Type<ActiveChunkGroupPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(Exworld.MODID, "active_chunk_group"));
     public static final StreamCodec<RegistryFriendlyByteBuf, ActiveChunkGroupPayload> STREAM_CODEC = StreamCodec.of(
             ActiveChunkGroupPayload::encode, ActiveChunkGroupPayload::decode);
-
     private static void encode(RegistryFriendlyByteBuf buffer, ActiveChunkGroupPayload payload) {
         buffer.writeUtf(payload.shape.id());
         buffer.writeVarInt(payload.shape.groupChunks());
@@ -25,6 +24,7 @@ public record ActiveChunkGroupPayload(ChunkGroupShape shape) implements CustomPa
             buffer.writeVarInt(cell.x());
             buffer.writeVarInt(cell.z());
         }
+        buffer.writeBoolean(payload.archipelago());
     }
 
     private static ActiveChunkGroupPayload decode(RegistryFriendlyByteBuf buffer) {
@@ -33,7 +33,7 @@ public record ActiveChunkGroupPayload(ChunkGroupShape shape) implements CustomPa
         int size = buffer.readVarInt();
         List<ChunkGroupShape.Cell> cells = new ArrayList<>(size);
         for (int i = 0; i < size; i++) cells.add(new ChunkGroupShape.Cell(buffer.readVarInt(), buffer.readVarInt()));
-        return new ActiveChunkGroupPayload(new ChunkGroupShape(id, groupChunks, cells));
+        return new ActiveChunkGroupPayload(new ChunkGroupShape(id, groupChunks, cells), buffer.readBoolean());
     }
 
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }

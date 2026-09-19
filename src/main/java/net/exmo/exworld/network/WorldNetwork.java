@@ -18,6 +18,7 @@ public final class WorldNetwork {
         BattleNetwork.register(registrar);
         QuestNetwork.register(registrar);
         ShipNetwork.register(registrar);
+        net.exmo.exworld.inventory.InventoryNetwork.register(registrar);
         registrar.playToServer(RequestWorldMapPayload.TYPE, RequestWorldMapPayload.STREAM_CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) sendSnapshot(player, WorldSystem.snapshot(player));
         });
@@ -35,7 +36,7 @@ public final class WorldNetwork {
         registrar.playToClient(WorldGroupEditorPayload.TYPE, WorldGroupEditorPayload.STREAM_CODEC,
                 (payload, context) -> WorldMapClient.receiveGroupEditor(payload));
         registrar.playToClient(ActiveChunkGroupPayload.TYPE, ActiveChunkGroupPayload.STREAM_CODEC,
-                (payload, context) -> ClientChunkGroupState.install(payload.shape()));
+                (payload, context) -> ClientChunkGroupState.install(payload.shape(), payload.archipelago()));
         registrar.playToClient(AnchorSnapshotPayload.TYPE, AnchorSnapshotPayload.STREAM_CODEC,
                 (payload, context) -> WorldMapClient.receiveAnchors(payload.snapshot()));
         registrar.playToServer(AnchorActionPayload.TYPE, AnchorActionPayload.STREAM_CODEC, (payload, context) -> {
@@ -64,6 +65,7 @@ public final class WorldNetwork {
     }
 
     public static void sendActiveChunkGroup(ServerPlayer player, net.exmo.exworld.world.model.ChunkGroupShape shape) {
-        PacketDistributor.sendToPlayer(player, new ActiveChunkGroupPayload(shape));
+        PacketDistributor.sendToPlayer(player, new ActiveChunkGroupPayload(shape,
+                net.exmo.exworld.world.generation.ArchipelagoPresets.isArchipelago(player.serverLevel())));
     }
 }
