@@ -43,6 +43,9 @@ public final class ExModifierTooltipModelTestHarness {
             List<ExModifierTooltip.SuitSection> sections = ExModifierTooltip.suits(
                     List.of(view), List.of(view), ExModifierCatalog.current(),
                     key -> "tooltip.exmodifier.suit.blades".equals(key) ? "Blades" : key);
+            ExModifierTooltip.SlotSection emptySlots = ExModifierTooltip.slotSection(
+                    null, ExModifierCatalog.current(), key -> key);
+            if (emptySlots.total() != 0) throw new AssertionError("null stack must have no slot section");
             if (sections.size() != 1) throw new AssertionError("expected blades suit section");
             ExModifierTooltip.SuitSection section = sections.getFirst();
             if (!"Blades".equals(section.name())) throw new AssertionError("suit name");
