@@ -13,7 +13,7 @@ final class ChunkGroupCameraBounds {
     private ChunkGroupCameraBounds() {}
 
     static double constrainedDistance(Vec3 eye, float yaw, float pitch, double requestedDistance) {
-        if (ChunkGroupRenderCuller.bypassBoundary()) return requestedDistance;
+        if (ChunkGroupRenderCuller.bypassBoundary() || !net.exmo.exworld.Config.legacyRegionBoundary) return requestedDistance;
         Vec3 backwards = backwardsDirection(yaw, pitch);
         double maximum = requestedDistance;
         var shape = ClientChunkGroupState.active();

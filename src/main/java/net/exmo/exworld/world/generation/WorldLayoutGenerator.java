@@ -1,5 +1,6 @@
 package net.exmo.exworld.world.generation;
 
+import net.exmo.exworld.Config;
 import net.exmo.exworld.world.model.Region;
 import net.exmo.exworld.world.model.WorldBiome;
 import net.exmo.exworld.world.model.WorldTile;
@@ -9,19 +10,19 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
 
-/** Generates one finite square atlas with connected, irregular regions and biome patches of different scales. */
+/** Generates one finite square atlas with connected biome zones and island sites that stay inside those zones. */
 public final class WorldLayoutGenerator {
     private static final int DIAMETER = WorldDimensions.MAP_SIZE;
-    private static final int SITE_GROUP_COUNT = 96;
-    private static final String[] PREFIXES = {"雾隐", "赤沙", "苍木", "白石", "星落", "暮潮", "风鸣", "旧都", "青穗", "北辰"};
-    private static final String[] SUFFIXES = {"驿", "原", "谷", "港", "城", "泽", "岭", "墟", "道", "乡"};
-    private static final String[] LANDMARKS = {"废弃车站", "边境村落", "古代哨塔", "旅行商栈", "地下遗迹", "猎人营地", "石桥", "旧矿井"};
+    private static final String[] PREFIXES = {"诸天", "雾隐", "赤沙", "苍木", "白石", "星落", "暮潮", "风鸣", "浮穹", "北辰"};
+    private static final String[] SUFFIXES = {"区", "驿", "原", "谷", "界", "泽", "岭", "墟", "道", "乡"};
+    private static final int[][] DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     private WorldLayoutGenerator() {}
 
@@ -33,13 +34,15 @@ public final class WorldLayoutGenerator {
         return generate(seed, groupChunks, true);
     }
 
-    /** Generates either the legacy biome/site groups or the manual-mode singleton starting partition. */
     public static GeneratedLayout generate(long seed, int groupChunks, boolean automaticGroups) {
-        int groupBlocks = WorldDimensions.groupBlocks(groupChunks);
+        return generate(seed, groupChunks, automaticGroups, Config.zoneTargetSpan);
+    }
+
+    /** Generates either biome zones (with island halos) or the manual-mode singleton starting partition. */
+    public static GeneratedLayout generate(long seed, int groupChunks, boolean automaticGroups, int zoneTargetSpan) {
         Random random = new Random(seed ^ 0x45_58_57_4FL);
         WorldBiome[][] biomeMap = growBiomes(random);
-        String[][] sites = placeSiteGroups(random);
-        GroupLayout groups = buildGroups(random, biomeMap, sites);
+        GroupLayout groups = buildGroups(random, biomeMap, Math.max(8, zoneTargetSpan));
         int[][] regionMap = groups.owners;
         Map<Integer, RegionDraft> drafts = groups.drafts;
         List<WorldTile> tiles = new ArrayList<>(DIAMETER * DIAMETER);
@@ -53,14 +56,15 @@ public final class WorldLayoutGenerator {
                 WorldBiome biome = biomeMap[gz][gx];
                 String tileId = "tile_" + signed(x) + "_" + signed(z);
                 region.tileIds.add(tileId);
-                String site = sites[gz][gx] == null ? "暂无已知据点" : sites[gz][gx];
                 String description = biome.displayName() + "延伸至此，" + biomeDescription(biome, seed, x, z);
                 tiles.add(new WorldTile(tileId, x, z, region.id, region.name, biome.mapColor(),
                         WorldDimensions.groupCenter(x, groupChunks), WorldDimensions.groupCenter(z, groupChunks),
                         x == 0 && z == 0,
-                        biome.id(), description, site, biome.resources()));
+                        biome.id(), description, "暂无已知据点", biome.resources()));
             }
         }
+
+        overlayIslands(tiles, seed, groupChunks);
 
         List<Region> regions = drafts.values().stream()
                 .map(region -> new Region(region.id, region.tileIds, region.name, region.storySeed)).toList();
@@ -74,7 +78,43 @@ public final class WorldLayoutGenerator {
         return new GeneratedLayout(manualTiles, manualRegions);
     }
 
-    /** Large-spread profiles win broad belts; small-spread profiles remain compact local patches. */
+    private static void overlayIslands(List<WorldTile> tiles, long seed, int groupChunks) {
+        Map<Long, Integer> indexByCoord = new HashMap<>();
+        for (int i = 0; i < tiles.size(); i++) {
+            WorldTile tile = tiles.get(i);
+            indexByCoord.put(pack(tile.mapX(), tile.mapZ()), i);
+        }
+        int minBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MIN, groupChunks)
+                - WorldDimensions.groupBlocks(groupChunks) / 2;
+        int maxBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MAX_EXCLUSIVE - 1, groupChunks)
+                + WorldDimensions.groupBlocks(groupChunks) / 2;
+        IslandLayout.Settings settings = IslandLayout.boundSettings();
+        for (IslandLayout.Island island : IslandLayout.islandsOverlappingBlocks(seed, settings, minBlock, minBlock,
+                maxBlock, maxBlock)) {
+            if (!island.named() && IslandLayout.unit(seed, island.cellX(), island.cellZ(), 83) > 0.18) continue;
+            int mapX = WorldDimensions.groupCoordinate(island.centerX(), groupChunks);
+            int mapZ = WorldDimensions.groupCoordinate(island.centerZ(), groupChunks);
+            Integer centerIndex = indexByCoord.get(pack(mapX, mapZ));
+            if (centerIndex == null) continue;
+            String regionId = tiles.get(centerIndex).regionId();
+            String label = island.mapLabel();
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    Integer index = indexByCoord.get(pack(mapX + dx, mapZ + dz));
+                    if (index == null) continue;
+                    WorldTile tile = tiles.get(index);
+                    if (!tile.regionId().equals(regionId)) continue;
+                    String site = (dx == 0 && dz == 0) || tile.sites().equals("暂无已知据点") ? label : tile.sites();
+                    tiles.set(index, new WorldTile(tile.id(), tile.mapX(), tile.mapZ(), tile.regionId(), tile.name(),
+                            tile.color(), tile.worldX(), tile.worldZ(), tile.discovered(), tile.biomeId(),
+                            tile.description(), site, tile.resources()));
+                }
+            }
+        }
+    }
+
+    private static long pack(int x, int z) { return ((long) x << 32) ^ (z & 0xFFFFFFFFL); }
+
     private static WorldBiome[][] growBiomes(Random random) {
         WorldBiome[] seedProfiles = biomeSeedProfiles();
         int[][] owner = emptyOwner();
@@ -108,12 +148,11 @@ public final class WorldLayoutGenerator {
     }
 
     private static void grow(int[][] owner, PriorityQueue<Frontier> frontier, long salt, WorldBiome[] profiles) {
-        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         while (!frontier.isEmpty()) {
             Frontier current = frontier.poll();
             if (owner[current.z][current.x] >= 0) continue;
             owner[current.z][current.x] = current.owner;
-            for (int[] direction : directions) {
+            for (int[] direction : DIRECTIONS) {
                 int nx = current.x + direction[0];
                 int nz = current.z + direction[1];
                 if (nx < 0 || nz < 0 || nx >= DIAMETER || nz >= DIAMETER || owner[nz][nx] >= 0) continue;
@@ -125,53 +164,117 @@ public final class WorldLayoutGenerator {
         }
     }
 
-    /** Natural groups consume one connected biome patch; sites reserve their own additional one-tile groups. */
-    private static GroupLayout buildGroups(Random random, WorldBiome[][] biomes, String[][] sites) {
+    private static GroupLayout buildGroups(Random random, WorldBiome[][] biomes, int zoneTargetSpan) {
         int[][] owners = emptyOwner();
         Map<Integer, RegionDraft> drafts = new LinkedHashMap<>();
         int nextOwner = 0;
-        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        boolean[][] visited = new boolean[DIAMETER][DIAMETER];
         for (int z = 0; z < DIAMETER; z++) {
             for (int x = 0; x < DIAMETER; x++) {
-                if (owners[z][x] >= 0) continue;
-                int owner = nextOwner++;
-                boolean siteGroup = sites[z][x] != null;
-                String id = (siteGroup ? "site_group_" : "biome_group_") + owner;
-                String name = siteGroup ? sites[z][x]
-                        : PREFIXES[random.nextInt(PREFIXES.length)] + SUFFIXES[random.nextInt(SUFFIXES.length)];
-                drafts.put(owner, new RegionDraft(id, name, random.nextLong()));
-                if (siteGroup) {
-                    owners[z][x] = owner;
-                    continue;
-                }
-                WorldBiome biome = biomes[z][x];
-                ArrayDeque<Cell> queue = new ArrayDeque<>();
-                queue.add(new Cell(x, z));
-                owners[z][x] = owner;
-                while (!queue.isEmpty()) {
-                    Cell current = queue.removeFirst();
-                    for (int[] direction : directions) {
-                        int nx = current.x + direction[0];
-                        int nz = current.z + direction[1];
-                        if (nx < 0 || nz < 0 || nx >= DIAMETER || nz >= DIAMETER || owners[nz][nx] >= 0
-                                || sites[nz][nx] != null || biomes[nz][nx] != biome) continue;
-                        owners[nz][nx] = owner;
-                        queue.add(new Cell(nx, nz));
-                    }
+                if (visited[z][x]) continue;
+                List<Cell> patch = floodBiome(biomes, visited, x, z);
+                for (List<Cell> zone : partitionPatch(patch, zoneTargetSpan)) {
+                    int owner = nextOwner++;
+                    String name = PREFIXES[random.nextInt(PREFIXES.length)] + SUFFIXES[random.nextInt(SUFFIXES.length)];
+                    drafts.put(owner, new RegionDraft("biome_group_" + owner, name, random.nextLong()));
+                    for (Cell cell : zone) owners[cell.z][cell.x] = owner;
                 }
             }
         }
         return new GroupLayout(owners, drafts);
     }
 
-    private static String[][] placeSiteGroups(Random random) {
-        String[][] sites = new String[DIAMETER][DIAMETER];
-        List<Cell> seeds = spacedSeeds(random, SITE_GROUP_COUNT, 5);
-        for (int index = 0; index < seeds.size(); index++) {
-            Cell cell = seeds.get(index);
-            sites[cell.z][cell.x] = LANDMARKS[index % LANDMARKS.length];
+    private static List<Cell> floodBiome(WorldBiome[][] biomes, boolean[][] visited, int startX, int startZ) {
+        WorldBiome biome = biomes[startZ][startX];
+        ArrayDeque<Cell> queue = new ArrayDeque<>();
+        List<Cell> patch = new ArrayList<>();
+        queue.add(new Cell(startX, startZ));
+        visited[startZ][startX] = true;
+        while (!queue.isEmpty()) {
+            Cell current = queue.removeFirst();
+            patch.add(current);
+            for (int[] direction : DIRECTIONS) {
+                int nx = current.x + direction[0];
+                int nz = current.z + direction[1];
+                if (nx < 0 || nz < 0 || nx >= DIAMETER || nz >= DIAMETER || visited[nz][nx]
+                        || biomes[nz][nx] != biome) continue;
+                visited[nz][nx] = true;
+                queue.add(new Cell(nx, nz));
+            }
         }
-        return sites;
+        return patch;
+    }
+
+    private static List<List<Cell>> partitionPatch(List<Cell> patch, int zoneTargetSpan) {
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        boolean[][] inPatch = new boolean[DIAMETER][DIAMETER];
+        for (Cell cell : patch) {
+            inPatch[cell.z][cell.x] = true;
+            minX = Math.min(minX, cell.x);
+            maxX = Math.max(maxX, cell.x);
+            minZ = Math.min(minZ, cell.z);
+            maxZ = Math.max(maxZ, cell.z);
+        }
+        if (maxX - minX < zoneTargetSpan && maxZ - minZ < zoneTargetSpan) return List.of(patch);
+        List<Cell> seeds = new ArrayList<>();
+        for (int z = minZ; z <= maxZ; z += zoneTargetSpan) {
+            for (int x = minX; x <= maxX; x += zoneTargetSpan) {
+                Cell seed = nearestPatchCell(inPatch, x, z, minX, maxX, minZ, maxZ);
+                if (seed != null && seeds.stream().noneMatch(existing -> existing.x == seed.x && existing.z == seed.z)) {
+                    seeds.add(seed);
+                }
+            }
+        }
+        if (seeds.size() <= 1) return List.of(patch);
+        int[][] owner = emptyOwner();
+        ArrayDeque<Frontier> queue = new ArrayDeque<>();
+        for (int i = 0; i < seeds.size(); i++) {
+            Cell seed = seeds.get(i);
+            owner[seed.z][seed.x] = i;
+            queue.add(new Frontier(seed.x, seed.z, i, 0));
+        }
+        while (!queue.isEmpty()) {
+            Frontier current = queue.removeFirst();
+            for (int[] direction : DIRECTIONS) {
+                int nx = current.x + direction[0];
+                int nz = current.z + direction[1];
+                if (nx < 0 || nz < 0 || nx >= DIAMETER || nz >= DIAMETER || !inPatch[nz][nx] || owner[nz][nx] >= 0) continue;
+                owner[nz][nx] = current.owner;
+                queue.add(new Frontier(nx, nz, current.owner, 0));
+            }
+        }
+        List<List<Cell>> zones = new ArrayList<>();
+        for (int i = 0; i < seeds.size(); i++) zones.add(new ArrayList<>());
+        List<Cell> leftovers = new ArrayList<>();
+        for (Cell cell : patch) {
+            int assigned = owner[cell.z][cell.x];
+            if (assigned >= 0) zones.get(assigned).add(cell);
+            else leftovers.add(cell);
+        }
+        for (Cell leftover : leftovers) {
+            List<Cell> extra = new ArrayList<>();
+            extra.add(leftover);
+            zones.add(extra);
+        }
+        zones.removeIf(List::isEmpty);
+        return zones;
+    }
+
+    private static Cell nearestPatchCell(boolean[][] inPatch, int x, int z, int minX, int maxX, int minZ, int maxZ) {
+        Cell best = null;
+        int bestDist = Integer.MAX_VALUE;
+        for (int pz = minZ; pz <= maxZ; pz++) {
+            for (int px = minX; px <= maxX; px++) {
+                if (!inPatch[pz][px]) continue;
+                int dist = Math.abs(px - x) + Math.abs(pz - z);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = new Cell(px, pz);
+                    if (dist == 0) return best;
+                }
+            }
+        }
+        return best;
     }
 
     private static List<Cell> spacedSeeds(Random random, int count, int minimumDistance) {

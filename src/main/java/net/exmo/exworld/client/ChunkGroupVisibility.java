@@ -8,6 +8,7 @@ public final class ChunkGroupVisibility {
 
     public static boolean allows(ChunkGroupShape active, double playerX, double playerZ,
                                  double candidateX, double candidateZ) {
+        if (!net.exmo.exworld.Config.legacyRegionBoundary) return true;
         return active == null || active.containsPosition(candidateX, candidateZ);
     }
 }

@@ -3,8 +3,10 @@ package net.exmo.exworld;
 import com.mojang.logging.LogUtils;
 import net.exmo.exworld.client.WorldMapClient;
 import net.exmo.exworld.content.ExWorldContent;
+import net.exmo.exworld.data.ExWorldData;
 import net.exmo.exworld.network.WorldNetwork;
 import net.exmo.exworld.world.WorldSystem;
+import net.exmo.exworld.world.generation.IslandField;
 import net.exmo.exworld.battle.BattleSystem;
 import net.exmo.exworld.battle.attribute.BattleAttributes;
 import net.exmo.exworld.dungeon.DungeonSystem;
@@ -27,8 +29,10 @@ public final class Exworld {
 
     public Exworld(IEventBus modBus, ModContainer container) {
         ExWorldContent.register(modBus);
+        IslandField.register(modBus);
         BattleAttributes.register(modBus);
         modBus.addListener(WorldNetwork::register);
+        modBus.addListener(ExWorldData::gather);
         NeoForge.EVENT_BUS.register(WorldSystem.class);
         BattleSystem.registerEvents();
         DungeonSystem.registerEvents();

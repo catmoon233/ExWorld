@@ -2,6 +2,7 @@ package net.exmo.exworld.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.exmo.exworld.Config;
 import net.exmo.exworld.client.battle.BattleClient;
 import net.exmo.exworld.world.model.ChunkGroupBounds;
 import net.exmo.exworld.world.model.ChunkGroupShape;
@@ -33,9 +34,11 @@ public final class WorldBoundaryRenderer {
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         pose.translate(-camera.x, -camera.y, -camera.z);
-        double bottom = minecraft.level.getMinBuildHeight();
-        double top = minecraft.level.getMaxBuildHeight();
+        boolean legacy = Config.legacyRegionBoundary;
+        double bottom = legacy ? minecraft.level.getMinBuildHeight() : minecraft.player.getY() - 0.05;
+        double top = legacy ? minecraft.level.getMaxBuildHeight() : minecraft.player.getY() + 1.5;
         double thickness = 0.28;
+        float alpha = legacy ? 0.56F : 0.28F;
 
         // BufferSource may reuse one BufferBuilder for non-fixed render types. Finish one type before requesting the
         // next, otherwise getBuffer(debugFilledBox) can close the still-referenced lines consumer.
@@ -44,21 +47,21 @@ public final class WorldBoundaryRenderer {
             ChunkGroupBounds bounds = ChunkGroupBounds.forGroup(cell.x(), cell.z(), shape.groupChunks());
             int edges = shape.boundaryMask(cell);
             if ((edges & ChunkGroupShape.WEST) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.minX() + thickness, top, bounds.maxZ());
+                    bounds.minX() + thickness, top, bounds.maxZ(), alpha);
             if ((edges & ChunkGroupShape.EAST) != 0) addWall(pose, mask, bounds.maxX() - thickness, bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.maxZ());
+                    bounds.maxX(), top, bounds.maxZ(), alpha);
             if ((edges & ChunkGroupShape.NORTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.minZ() + thickness);
+                    bounds.maxX(), top, bounds.minZ() + thickness, alpha);
             if ((edges & ChunkGroupShape.SOUTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.maxZ() - thickness,
-                    bounds.maxX(), top, bounds.maxZ());
+                    bounds.maxX(), top, bounds.maxZ(), alpha);
         }
         minecraft.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
         pose.popPose();
     }
 
     private static void addWall(PoseStack pose, VertexConsumer consumer, double minX, double minY, double minZ,
-                                double maxX, double maxY, double maxZ) {
+                                double maxX, double maxY, double maxZ, float alpha) {
         LevelRenderer.addChainedFilledBoxVertices(pose, consumer, minX, minY, minZ, maxX, maxY, maxZ,
-                0.88F, 0.89F, 0.90F, 0.56F);
+                0.88F, 0.89F, 0.90F, alpha);
     }
 }

@@ -11,32 +11,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Property harness for atlas size, irregular connected regions and varied biome patch sizes. */
+/** Property harness for atlas size, biome zones, island halos and the manual singleton partition. */
 public final class WorldLayoutGeneratorTestHarness {
     public static void main(String[] args) {
-        var layout = WorldLayoutGenerator.generate(0x4558574F524C44L);
+        var layout = WorldLayoutGenerator.generate(0x4558574F524C44L, WorldDimensions.DEFAULT_GROUP_CHUNKS, true, 48);
         require(layout.tiles().size() == WorldDimensions.MAP_SIZE * WorldDimensions.MAP_SIZE,
                 "atlas must fill the 128x128 finite square");
         require(layout.regions().stream().noneMatch(net.exmo.exworld.world.model.Region::configured),
                 "automatic groups must start unconfigured so the M map stays biome-only until edited");
+        require(layout.regions().stream().allMatch(region -> region.id().startsWith("biome_group_")),
+                "automatic layout must keep islands inside biome zones instead of splitting site groups");
         Map<String, WorldTile> byId = new HashMap<>();
         layout.tiles().forEach(tile -> byId.put(tile.id(), tile));
         boolean irregularRegion = false;
-        boolean siteGroup = false;
+        boolean namedZone = false;
+        WorldTile origin = byCoordinate(layout.tiles(), 0, 0);
+        require(origin != null && !origin.sites().equals("暂无已知据点"), "origin tile must be labelled as the main island");
         for (Region region : layout.regions()) {
             require(connected(region.tileIds(), byId), "region must be connected: " + region.id());
+            if (region.name().contains("区") || region.name().contains("诸天")) namedZone = true;
             WorldTile firstTile = byId.get(region.tileIds().getFirst());
-            if (region.id().startsWith("site_group_")) {
-                siteGroup = true;
-                require(region.tileIds().size() == 1, "a generated site must reserve its own world-tile group");
-                require(!firstTile.sites().equals("暂无已知据点"), "site group must carry a site");
-            } else {
-                require(region.id().startsWith("biome_group_"), "unknown generated group kind: " + region.id());
-                for (String tileId : region.tileIds()) {
-                    WorldTile tile = byId.get(tileId);
-                    require(tile.biomeId().equals(firstTile.biomeId()), "natural group crosses biome patches");
-                    require(tile.sites().equals("暂无已知据点"), "site tile leaked into natural group");
-                }
+            for (String tileId : region.tileIds()) {
+                WorldTile tile = byId.get(tileId);
+                require(tile.biomeId().equals(firstTile.biomeId()), "natural group crosses biome patches");
             }
             int minX = region.tileIds().stream().map(byId::get).mapToInt(WorldTile::mapX).min().orElseThrow();
             int maxX = region.tileIds().stream().map(byId::get).mapToInt(WorldTile::mapX).max().orElseThrow();
@@ -44,18 +41,36 @@ public final class WorldLayoutGeneratorTestHarness {
             int maxZ = region.tileIds().stream().map(byId::get).mapToInt(WorldTile::mapZ).max().orElseThrow();
             if (region.tileIds().size() < (maxX - minX + 1) * (maxZ - minZ + 1)) irregularRegion = true;
         }
-        require(siteGroup, "world must contain additional site groups");
-        for (WorldTile tile : layout.tiles()) {
-            if (!tile.sites().equals("暂无已知据点")) continue;
-            for (int[] direction : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                WorldTile neighbor = byCoordinate(layout.tiles(), tile.mapX() + direction[0], tile.mapZ() + direction[1]);
-                if (neighbor != null && neighbor.sites().equals("暂无已知据点")
-                        && neighbor.biomeId().equals(tile.biomeId())) {
-                    require(neighbor.regionId().equals(tile.regionId()),
-                            "one connected biome patch was split across natural groups");
+        require(namedZone, "at least one zone should use the 诸天/区 naming band");
+        long seed = 0x4558574F524C44L;
+        int groupChunks = WorldDimensions.DEFAULT_GROUP_CHUNKS;
+        IslandLayout.Settings settings = IslandLayout.boundSettings();
+        int minBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MIN, groupChunks)
+                - WorldDimensions.groupBlocks(groupChunks) / 2;
+        int maxBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MAX_EXCLUSIVE - 1, groupChunks)
+                + WorldDimensions.groupBlocks(groupChunks) / 2;
+        for (IslandLayout.Island island : IslandLayout.islandsOverlappingBlocks(seed, settings, minBlock, minBlock,
+                maxBlock, maxBlock)) {
+            int mapX = WorldDimensions.groupCoordinate(island.centerX(), groupChunks);
+            int mapZ = WorldDimensions.groupCoordinate(island.centerZ(), groupChunks);
+            WorldTile center = byCoordinate(layout.tiles(), mapX, mapZ);
+            if (center == null || center.sites().equals("暂无已知据点")) continue;
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    WorldTile neighbor = byCoordinate(layout.tiles(), mapX + dx, mapZ + dz);
+                    if (neighbor == null || neighbor.regionId().equals(center.regionId())) continue;
+                    IslandLayout.Island hosted = IslandLayout.nearestIsland(seed, settings, neighbor.worldX(),
+                            neighbor.worldZ());
+                    boolean hostsOwn = WorldDimensions.groupCoordinate(hosted.centerX(), groupChunks) == neighbor.mapX()
+                            && WorldDimensions.groupCoordinate(hosted.centerZ(), groupChunks) == neighbor.mapZ();
+                    require(!neighbor.sites().equals(center.sites()) || hostsOwn,
+                            "island halo leaked across zone at " + neighbor.id());
                 }
             }
         }
+        var tight = WorldLayoutGenerator.generate(seed, groupChunks, true, 8);
+        require(tight.regions().size() > layout.regions().size(),
+                "smaller zoneTargetSpan must split the atlas into more named zones");
         require(irregularRegion, "at least one region must have a non-rectangular outline");
         Map<String, Long> biomeSizes = layout.tiles().stream().collect(java.util.stream.Collectors.groupingBy(
                 WorldTile::biomeId, java.util.stream.Collectors.counting()));

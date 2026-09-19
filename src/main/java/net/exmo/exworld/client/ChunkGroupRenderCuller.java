@@ -16,7 +16,7 @@ public final class ChunkGroupRenderCuller {
     public static boolean containsSection(int sectionOriginX, int sectionOriginZ) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || minecraft.level.dimension() != Level.OVERWORLD) return true;
-        if (bypassBoundary()) return true;
+        if (bypassBoundary() || !net.exmo.exworld.Config.legacyRegionBoundary) return true;
         return activeForPlayer(minecraft).overlapsSection(sectionOriginX, sectionOriginZ);
     }
 
@@ -24,7 +24,7 @@ public final class ChunkGroupRenderCuller {
     public static boolean containsPosition(double worldX, double worldZ) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || minecraft.level.dimension() != Level.OVERWORLD) return true;
-        if (bypassBoundary()) return true;
+        if (bypassBoundary() || !net.exmo.exworld.Config.legacyRegionBoundary) return true;
         return ChunkGroupVisibility.allows(activeForPlayer(minecraft), minecraft.player.getX(), minecraft.player.getZ(), worldX, worldZ);
     }
 

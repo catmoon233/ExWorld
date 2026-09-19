@@ -1,5 +1,6 @@
 package net.exmo.exworld.client;
 
+import net.exmo.exworld.Config;
 import net.exmo.exworld.world.model.ChunkGroupShape;
 
 import java.util.List;
@@ -9,9 +10,18 @@ public final class ChunkGroupVisibilityTestHarness {
     public static void main(String[] args) {
         ChunkGroupShape shape = new ChunkGroupShape("l", 4, List.of(
                 new ChunkGroupShape.Cell(0, 0), new ChunkGroupShape.Cell(1, 0), new ChunkGroupShape.Cell(0, 1)));
-        require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 0), "entity inside the active group must render");
-        require(!ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
-                "entity outside the active concave group must not render");
+        boolean previous = Config.legacyRegionBoundary;
+        try {
+            Config.legacyRegionBoundary = true;
+            require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 0), "entity inside the active group must render");
+            require(!ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
+                    "entity outside the active concave group must not render");
+            Config.legacyRegionBoundary = false;
+            require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
+                    "short translucent wall must leave entities outside the group unclamped");
+        } finally {
+            Config.legacyRegionBoundary = previous;
+        }
         require(ChunkGroupVisibility.allows(null, 0, 0, 9_999, 9_999),
                 "without an authoritative group snapshot, normal entity rendering remains available");
         System.out.println("CHUNK_GROUP_VISIBILITY_TEST_OK");

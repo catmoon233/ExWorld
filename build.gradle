@@ -231,6 +231,12 @@ tasks.register('worldLayoutTest', JavaExec) {
     mainClass = 'net.exmo.exworld.world.generation.WorldLayoutGeneratorTestHarness'
 }
 
+tasks.register('islandFieldTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.world.generation.IslandFieldTestHarness'
+}
+
 tasks.register('regionOutlineTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath

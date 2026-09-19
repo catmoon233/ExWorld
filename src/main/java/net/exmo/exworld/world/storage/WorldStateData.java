@@ -1,5 +1,6 @@
 package net.exmo.exworld.world.storage;
 
+import net.exmo.exworld.Config;
 import net.exmo.exworld.world.generation.WorldLayoutGenerator;
 import net.exmo.exworld.world.model.Region;
 import net.exmo.exworld.world.model.WorldTile;
@@ -24,7 +25,7 @@ import java.util.HashSet;
 import java.util.UUID;
 
 public final class WorldStateData extends SavedData {
-    private static final int LAYOUT_VERSION = 7;
+    private static final int LAYOUT_VERSION = 8;
     public static final Factory<WorldStateData> FACTORY = new Factory<>(WorldStateData::new, WorldStateData::load);
     private final Map<String, WorldTile> tiles = new LinkedHashMap<>();
     private final Map<String, Region> regions = new LinkedHashMap<>();
@@ -37,11 +38,12 @@ public final class WorldStateData extends SavedData {
     private int groupChunks = WorldDimensions.DEFAULT_GROUP_CHUNKS;
     private final BitSet generatedChunkBits = new BitSet();
     private boolean pregenerationEnabled;
-    /** New worlds begin with individual editable groups; legacy saves retain their generated grouping until enabled. */
-    private boolean manualGroups = true;
+    /** New worlds begin with biome-generated zones; the editor can still switch to manual singleton groups. */
+    private boolean manualGroups = false;
     /** Monotonic edit token so concurrent remote editors cannot silently overwrite one another. */
     private long groupRevision;
     private long worldSeed;
+    private boolean archipelagoSpawnApplied;
     private int layoutVersion = LAYOUT_VERSION;
 
     public void initialize(long seed) {
@@ -70,6 +72,7 @@ public final class WorldStateData extends SavedData {
     /** Materializes one previously unseen world cell as an unconfigured singleton group. */
     public Optional<WorldTile> ensureTile(int mapX, int mapZ) {
         if (!WorldDimensions.withinMaximumWorldBorder(mapX, mapZ, groupChunks)) return Optional.empty();
+        if (!Config.autoExpandTiles && !tiles.containsKey(tileId(mapX, mapZ))) return Optional.empty();
         String id = tileId(mapX, mapZ);
         WorldTile existing = tiles.get(id);
         if (existing != null) return Optional.of(existing);
@@ -94,6 +97,12 @@ public final class WorldStateData extends SavedData {
     public boolean pregenerationEnabled() { return pregenerationEnabled; }
     public boolean manualGroups() { return manualGroups; }
     public long groupRevision() { return groupRevision; }
+    public boolean archipelagoSpawnApplied() { return archipelagoSpawnApplied; }
+    public void markArchipelagoSpawnApplied() {
+        if (archipelagoSpawnApplied) return;
+        archipelagoSpawnApplied = true;
+        setDirty();
+    }
     public List<TravelAnchor> anchors() { return List.copyOf(anchors.values()); }
     public Optional<TravelAnchor> anchor(String id) { return Optional.ofNullable(anchors.get(id)); }
     public List<String> playerAnchors(UUID playerId) { return List.copyOf(playerAnchors.getOrDefault(playerId, List.of())); }
@@ -327,10 +336,12 @@ public final class WorldStateData extends SavedData {
         tag.putBoolean("pregeneration_enabled", pregenerationEnabled);
         tag.putBoolean("manual_groups", manualGroups);
         tag.putLong("group_revision", groupRevision);
+        tag.putLong("world_seed", worldSeed);
+        tag.putBoolean("archipelago_spawn_applied", archipelagoSpawnApplied);
         return tag;
     }
 
-    private static WorldStateData load(CompoundTag tag, HolderLookup.Provider registries) {
+    static WorldStateData load(CompoundTag tag, HolderLookup.Provider registries) {
         WorldStateData data = new WorldStateData();
         data.layoutVersion = tag.getInt("layout_version");
         ListTag tileTags = tag.getList("tiles", CompoundTag.TAG_COMPOUND);
@@ -380,6 +391,10 @@ public final class WorldStateData extends SavedData {
         // Before this field existed, worlds were generated automatically. Preserve that layout until an admin enables editing.
         data.manualGroups = tag.contains("manual_groups") && tag.getBoolean("manual_groups");
         data.groupRevision = tag.getLong("group_revision");
+        data.worldSeed = tag.getLong("world_seed");
+        data.archipelagoSpawnApplied = tag.contains("archipelago_spawn_applied")
+                ? tag.getBoolean("archipelago_spawn_applied")
+                : !data.tiles.isEmpty();
         return data;
     }
 }

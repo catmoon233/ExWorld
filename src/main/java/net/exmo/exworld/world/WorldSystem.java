@@ -3,8 +3,9 @@ package net.exmo.exworld.world;
 import net.exmo.exworld.content.ExWorldContent;
 import net.exmo.exworld.network.WorldNetwork;
 import net.exmo.exworld.network.SaveWorldGroupEditPayload;
+import net.exmo.exworld.world.generation.ArchipelagoPresets;
 import net.exmo.exworld.world.generation.ChunkPreGenerator;
-import net.exmo.exworld.world.generation.WorldLayoutGenerator;
+import net.exmo.exworld.world.generation.IslandLayout;
 import net.exmo.exworld.world.generation.WorldTerrainAdapter;
 import net.exmo.exworld.world.model.AnchorSnapshot;
 import net.exmo.exworld.world.model.TravelAnchor;
@@ -28,7 +29,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
@@ -39,6 +39,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.exmo.exworld.Config;
 import net.minecraft.world.level.block.Blocks;
@@ -166,7 +167,9 @@ public final class WorldSystem {
 
     private static void teleportToTile(ServerPlayer player, WorldTile tile) {
         ServerLevel level = player.getServer().overworld();
-        BlockPos destination = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(tile.worldX(), 0, tile.worldZ())).above();
+        IslandLayout.Island island = IslandLayout.nearestIsland(level.getSeed(), IslandLayout.boundSettings(),
+                tile.worldX(), tile.worldZ());
+        BlockPos destination = new BlockPos(island.centerX(), island.topY() + 1, island.centerZ());
         teleport(player, destination, tile.id());
     }
 
@@ -184,15 +187,29 @@ public final class WorldSystem {
         if (event.hasTime() && state.pregenerationEnabled()) PRE_GENERATOR.tick(event.getServer().overworld(), state);
     }
 
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        IslandLayout.bindSeed(event.getServer().getWorldData().worldGenOptions().seed());
+    }
+
     /** The strategic map grows on demand, so do not keep a smaller vanilla world border as a second hidden limit. */
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
-        event.getServer().overworld().getWorldBorder().setSize(WorldDimensions.MAX_WORLD_BORDER_DIAMETER);
+        ServerLevel overworld = event.getServer().overworld();
+        overworld.getWorldBorder().setSize(WorldDimensions.MAX_WORLD_BORDER_DIAMETER);
+        IslandLayout.bindSeed(overworld.getSeed());
+        WorldStateData state = state(event.getServer());
+        if (ArchipelagoPresets.isArchipelago(overworld) && !state.archipelagoSpawnApplied()) {
+            IslandLayout.Island origin = IslandLayout.originIsland(overworld.getSeed());
+            overworld.setDefaultSpawnPos(new BlockPos(origin.centerX(), origin.topY() + 1, origin.centerZ()), 0.0F);
+            state.markArchipelagoSpawnApplied();
+        }
     }
 
     /**
      * Enforces the configured RPG floor on newly generated chunks. The dimension min-y itself remains a datapack
      * concern; this guarantees the requested Y=minimum bedrock invariant for both vanilla and custom presets.
+     * Archipelago worlds skip the bedrock slab so the void under islands stays empty.
      */
     @SubscribeEvent
     public static void onChunkGenerated(ChunkEvent.Load event) {
@@ -206,9 +223,12 @@ public final class WorldSystem {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int minX = event.getChunk().getPos().getMinBlockX();
         int minZ = event.getChunk().getPos().getMinBlockZ();
-        for (int x = 0; x < 16; x++) {
-            for (int z = 0; z < 16; z++) {
-                event.getChunk().setBlockState(cursor.set(minX + x, floorY, minZ + z), Blocks.BEDROCK.defaultBlockState(), false);
+        boolean archipelago = ArchipelagoPresets.isArchipelago(level);
+        if (!archipelago) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    event.getChunk().setBlockState(cursor.set(minX + x, floorY, minZ + z), Blocks.BEDROCK.defaultBlockState(), false);
+                }
             }
         }
         Optional<WorldTile> tile = tileAt(state, minX + 8.0, minZ + 8.0);
