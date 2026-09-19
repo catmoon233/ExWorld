@@ -5,7 +5,7 @@ import java.util.List;
 public record WorldSnapshot(List<MapTile> tiles, String currentTileId, int generatedChunks, int totalChunks,
                             int mapMinimumX, int mapMinimumZ, int mapWidth, int mapHeight, int groupChunks,
                             boolean pregenerationEnabled, boolean manualGroups, List<MapRegion> regions, List<MapAnchor> anchors,
-                            long groupRevision) {
+                            long groupRevision, boolean archipelago) {
     public WorldSnapshot {
         tiles = List.copyOf(tiles);
         regions = List.copyOf(regions);
@@ -15,6 +15,6 @@ public record WorldSnapshot(List<MapTile> tiles, String currentTileId, int gener
                          int mapMinimum, int mapSize, int groupChunks, boolean pregenerationEnabled, boolean manualGroups,
                          List<MapRegion> regions, List<MapAnchor> anchors) {
         this(tiles, currentTileId, generatedChunks, totalChunks, mapMinimum, mapMinimum, mapSize, mapSize, groupChunks,
-                pregenerationEnabled, manualGroups, regions, anchors, 0L);
+                pregenerationEnabled, manualGroups, regions, anchors, 0L, false);
     }
 }

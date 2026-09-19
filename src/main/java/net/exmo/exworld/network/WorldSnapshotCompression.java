@@ -50,6 +50,7 @@ final class WorldSnapshotCompression {
                     output.writeUTF(anchor.tileId());
                 }
                 output.writeLong(snapshot.groupRevision());
+                output.writeBoolean(snapshot.archipelago());
             }
             byte[] compressed = bytes.toByteArray();
             if (compressed.length > MAX_COMPRESSED_BYTES) {
@@ -88,21 +89,21 @@ final class WorldSnapshotCompression {
                         input.readInt(), input.readUTF()));
             }
             long groupRevision = input.readLong();
+            boolean archipelago = input.readBoolean();
             return new WorldSnapshot(tiles, currentTile, generated, total, mapMinimumX, mapMinimumZ, mapWidth, mapHeight,
-                    groupChunks, pregenerationEnabled, manualGroups, regions, anchors, groupRevision);
+                    groupChunks, pregenerationEnabled, manualGroups, regions, anchors, groupRevision, archipelago);
         } catch (IOException exception) {
             throw new IllegalArgumentException("could not decode world snapshot", exception);
         }
     }
-
     private static void writeTile(DataOutputStream output, MapTile tile) throws IOException {
         output.writeUTF(tile.id());
         output.writeInt(tile.mapX()); output.writeInt(tile.mapZ());
-        output.writeUTF(tile.regionId()); output.writeUTF(tile.biomeId());
+        output.writeUTF(tile.regionId()); output.writeUTF(tile.biomeId()); output.writeUTF(tile.sites());
     }
 
     private static MapTile readTile(DataInputStream input) throws IOException {
-        return new MapTile(input.readUTF(), input.readInt(), input.readInt(), input.readUTF(), input.readUTF());
+        return new MapTile(input.readUTF(), input.readInt(), input.readInt(), input.readUTF(), input.readUTF(), input.readUTF());
     }
 
     private static int bounded(int value, int minimum, int maximum, String name) throws IOException {

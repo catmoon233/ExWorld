@@ -49,25 +49,22 @@ public final class WorldLayoutGeneratorTestHarness {
                 - WorldDimensions.groupBlocks(groupChunks) / 2;
         int maxBlock = WorldDimensions.groupCenter(WorldDimensions.MAP_MAX_EXCLUSIVE - 1, groupChunks)
                 + WorldDimensions.groupBlocks(groupChunks) / 2;
+        int labelledIslands = 0;
         for (IslandLayout.Island island : IslandLayout.islandsOverlappingBlocks(seed, settings, minBlock, minBlock,
                 maxBlock, maxBlock)) {
+            boolean skipped = !island.named() && IslandLayout.unit(seed, island.cellX(), island.cellZ(), 83) > 0.18;
             int mapX = WorldDimensions.groupCoordinate(island.centerX(), groupChunks);
             int mapZ = WorldDimensions.groupCoordinate(island.centerZ(), groupChunks);
             WorldTile center = byCoordinate(layout.tiles(), mapX, mapZ);
-            if (center == null || center.sites().equals("暂无已知据点")) continue;
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    WorldTile neighbor = byCoordinate(layout.tiles(), mapX + dx, mapZ + dz);
-                    if (neighbor == null || neighbor.regionId().equals(center.regionId())) continue;
-                    IslandLayout.Island hosted = IslandLayout.nearestIsland(seed, settings, neighbor.worldX(),
-                            neighbor.worldZ());
-                    boolean hostsOwn = WorldDimensions.groupCoordinate(hosted.centerX(), groupChunks) == neighbor.mapX()
-                            && WorldDimensions.groupCoordinate(hosted.centerZ(), groupChunks) == neighbor.mapZ();
-                    require(!neighbor.sites().equals(center.sites()) || hostsOwn,
-                            "island halo leaked across zone at " + neighbor.id());
-                }
+            if (center == null) continue;
+            if (skipped) {
+                require(center.sites().equals("暂无已知据点"), "skipped unnamed island must stay unlabelled at " + center.id());
+                continue;
             }
+            require(center.sites().equals(island.mapLabel()), "island centre tile must carry its kind label at " + center.id());
+            labelledIslands++;
         }
+        require(labelledIslands > 0, "at least one island centre must be labelled on the map");
         var tight = WorldLayoutGenerator.generate(seed, groupChunks, true, 8);
         require(tight.regions().size() > layout.regions().size(),
                 "smaller zoneTargetSpan must split the atlas into more named zones");

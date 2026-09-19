@@ -91,6 +91,21 @@ public final class WorldStateData extends SavedData {
         setDirty();
         return Optional.of(created);
     }
+    /** A world tile counts as explored once any of its native chunks has generated. */
+    public boolean isTileExplored(WorldTile tile) {
+        int tileIndex = atlasTileIndex(tile.mapX(), tile.mapZ());
+        if (tileIndex < 0) return true;
+        int start = tileIndex * WorldDimensions.chunksPerGroup(groupChunks);
+        int next = generatedChunkBits.nextSetBit(start);
+        return next >= start && next < start + WorldDimensions.chunksPerGroup(groupChunks);
+    }
+
+    private int atlasTileIndex(int mapX, int mapZ) {
+        if (mapX < WorldDimensions.MAP_MIN || mapX >= WorldDimensions.MAP_MAX_EXCLUSIVE
+                || mapZ < WorldDimensions.MAP_MIN || mapZ >= WorldDimensions.MAP_MAX_EXCLUSIVE) return -1;
+        return (mapZ - WorldDimensions.MAP_MIN) * WorldDimensions.MAP_SIZE + mapX - WorldDimensions.MAP_MIN;
+    }
+
     public int generatedChunks() { return generatedChunkBits.cardinality(); }
     public int totalChunks() { return totalChunks; }
     public int groupChunks() { return groupChunks; }

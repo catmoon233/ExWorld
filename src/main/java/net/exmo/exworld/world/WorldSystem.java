@@ -62,22 +62,40 @@ public final class WorldSystem {
 
     public static WorldSnapshot snapshot(ServerPlayer player) {
         WorldStateData state = state(player.getServer());
+        boolean archipelago = ArchipelagoPresets.isArchipelago(player.getServer().overworld());
         WorldTile current = state.tile(state.playerTile(player.getUUID())).orElseGet(() ->
                 tileAt(state, player.getX(), player.getZ()).orElseGet(() -> state.tiles().getFirst()));
-        int minimumX = current.mapX() - WorldDimensions.MAP_SIZE / 2;
-        int minimumZ = current.mapZ() - WorldDimensions.MAP_SIZE / 2;
-        int maximumX = minimumX + WorldDimensions.MAP_SIZE;
-        int maximumZ = minimumZ + WorldDimensions.MAP_SIZE;
-        List<WorldTile> viewTiles = state.tiles().stream().filter(tile -> tile.mapX() >= minimumX && tile.mapX() < maximumX
-                && tile.mapZ() >= minimumZ && tile.mapZ() < maximumZ).toList();
+        List<WorldTile> viewTiles;
+        int minimumX;
+        int minimumZ;
+        int width;
+        int height;
+        if (archipelago) {
+            viewTiles = state.tiles().stream()
+                    .filter(tile -> tile.id().equals(current.id()) || state.isTileExplored(tile))
+                    .toList();
+            minimumX = viewTiles.stream().mapToInt(WorldTile::mapX).min().orElse(current.mapX());
+            minimumZ = viewTiles.stream().mapToInt(WorldTile::mapZ).min().orElse(current.mapZ());
+            width = viewTiles.stream().mapToInt(WorldTile::mapX).max().orElse(current.mapX()) - minimumX + 1;
+            height = viewTiles.stream().mapToInt(WorldTile::mapZ).max().orElse(current.mapZ()) - minimumZ + 1;
+        } else {
+            minimumX = current.mapX() - WorldDimensions.MAP_SIZE / 2;
+            minimumZ = current.mapZ() - WorldDimensions.MAP_SIZE / 2;
+            int maximumX = minimumX + WorldDimensions.MAP_SIZE;
+            int maximumZ = minimumZ + WorldDimensions.MAP_SIZE;
+            width = WorldDimensions.MAP_SIZE;
+            height = WorldDimensions.MAP_SIZE;
+            viewTiles = state.tiles().stream().filter(tile -> tile.mapX() >= minimumX && tile.mapX() < maximumX
+                    && tile.mapZ() >= minimumZ && tile.mapZ() < maximumZ).toList();
+        }
         Set<String> visibleRegions = viewTiles.stream().map(WorldTile::regionId).collect(java.util.stream.Collectors.toSet());
         return new WorldSnapshot(viewTiles.stream().map(MapTile::from).toList(),
                 current.id(), state.generatedChunks(), state.totalChunks(),
-                minimumX, minimumZ, WorldDimensions.MAP_SIZE, WorldDimensions.MAP_SIZE, state.groupChunks(),
+                minimumX, minimumZ, width, height, state.groupChunks(),
                 state.pregenerationEnabled(), state.manualGroups(), state.regionInfos(visibleRegions), state.playerAnchors(player.getUUID()).stream()
                         .map(state::anchor).flatMap(Optional::stream)
                         .map(anchor -> new MapAnchor(anchor.id(), anchor.name(), anchor.pos().getX(),
-                                anchor.pos().getY(), anchor.pos().getZ(), anchor.tileId())).toList(), state.groupRevision());
+                                anchor.pos().getY(), anchor.pos().getZ(), anchor.tileId())).toList(), state.groupRevision(), archipelago);
     }
 
     /** Returns the strategic-map biome at the player's current overworld tile. */

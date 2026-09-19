@@ -15,7 +15,7 @@ public final class WorldSnapshotCompressionTestHarness {
                 layout.tiles().size() * 16, WorldDimensions.MAP_MIN, WorldDimensions.MAP_MIN,
                 WorldDimensions.MAP_SIZE, WorldDimensions.MAP_SIZE, 4,
                 false, true, java.util.List.of(new MapRegion("biome_group_0", "赤沙港", "@", "赤沙港哨站", "盐、砂岩", true)),
-                java.util.List.of(new MapAnchor("anchor_12", "赤沙港锚点", 12, 68, -9, "tile_p0_p0")), 19L);
+                java.util.List.of(new MapAnchor("anchor_12", "赤沙港锚点", 12, 68, -9, "tile_p0_p0")), 19L, false);
         byte[] compressed = WorldSnapshotCompression.encode(snapshot);
         WorldSnapshot decoded = WorldSnapshotCompression.decode(compressed);
         require(compressed.length < WorldSnapshotCompression.MAX_COMPRESSED_BYTES, "snapshot exceeds packet budget");
@@ -31,6 +31,13 @@ public final class WorldSnapshotCompressionTestHarness {
                 && decoded.anchors().getFirst().y() == 68 && decoded.anchors().getFirst().z() == -9
                 && decoded.anchors().getFirst().name().equals("赤沙港锚点"), "travel anchor changed in codec");
         require(compressed.length < 130_000, "biome-only map snapshot exceeds the interactive payload budget: " + compressed.length);
+        require(!decoded.archipelago(), "legacy overworld snapshot must not report archipelago mode");
+        WorldSnapshot islandSnapshot = new WorldSnapshot(java.util.List.of(new MapTile("tile_p0_p0", 0, 0, "biome_group_0", "prairie", "主岛")),
+                "tile_p0_p0", 0, 0, 0, 0, 1, 1, 4, false, false,
+                java.util.List.of(new MapRegion("biome_group_0", "主岛区", "")), java.util.List.of(), 0L, true);
+        WorldSnapshot islandDecoded = WorldSnapshotCompression.decode(WorldSnapshotCompression.encode(islandSnapshot));
+        require(islandDecoded.archipelago() && islandDecoded.tiles().getFirst().sites().equals("主岛"),
+                "archipelago flag and island labels must survive the codec");
         var manualLayout = WorldLayoutGenerator.generate(0x4558574F524C44L, 4, false);
         WorldSnapshot manualSnapshot = new WorldSnapshot(manualLayout.tiles().stream().map(MapTile::from).toList(), "tile_p0_p0", 0,
                 manualLayout.tiles().size() * 16, WorldDimensions.MAP_MIN, WorldDimensions.MAP_SIZE, 4,

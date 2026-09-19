@@ -96,20 +96,11 @@ public final class WorldLayoutGenerator {
             int mapZ = WorldDimensions.groupCoordinate(island.centerZ(), groupChunks);
             Integer centerIndex = indexByCoord.get(pack(mapX, mapZ));
             if (centerIndex == null) continue;
-            String regionId = tiles.get(centerIndex).regionId();
+            WorldTile center = tiles.get(centerIndex);
             String label = island.mapLabel();
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    Integer index = indexByCoord.get(pack(mapX + dx, mapZ + dz));
-                    if (index == null) continue;
-                    WorldTile tile = tiles.get(index);
-                    if (!tile.regionId().equals(regionId)) continue;
-                    String site = (dx == 0 && dz == 0) || tile.sites().equals("暂无已知据点") ? label : tile.sites();
-                    tiles.set(index, new WorldTile(tile.id(), tile.mapX(), tile.mapZ(), tile.regionId(), tile.name(),
-                            tile.color(), tile.worldX(), tile.worldZ(), tile.discovered(), tile.biomeId(),
-                            tile.description(), site, tile.resources()));
-                }
-            }
+            tiles.set(centerIndex, new WorldTile(center.id(), center.mapX(), center.mapZ(), center.regionId(), center.name(),
+                    center.color(), center.worldX(), center.worldZ(), center.discovered(), center.biomeId(),
+                    center.description(), label, center.resources()));
         }
     }
 

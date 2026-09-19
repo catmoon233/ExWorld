@@ -36,13 +36,13 @@ public final class WorldMapScreen extends Screen {
     private final Map<Long, RegionIcon> regionIconsByCoordinate;
     private final RegionOutlineIndex regionOutlines;
     private final MapTile current;
+    private final boolean archipelago;
     private MapTile selected;
     private BiomeAtlasTexture biomeAtlas;
     private double zoom = 1.0;
     /** Map-space coordinate held at the viewport center; it is independent of GUI scale and pixel rounding. */
     private double viewCenterX;
     private double viewCenterZ;
-
     public WorldMapScreen(WorldSnapshot snapshot) {
         super(Component.translatable("screen.exworld.world_map"));
         this.snapshot = snapshot;
@@ -60,6 +60,7 @@ public final class WorldMapScreen extends Screen {
         this.regionIconsByCoordinate = new HashMap<>(regionIcons.size());
         regionIcons.forEach(icon -> regionIconsByCoordinate.put(key(icon.tile.mapX(), icon.tile.mapZ()), icon));
         this.regionOutlines = new RegionOutlineIndex(snapshot.tiles());
+        this.archipelago = snapshot.archipelago();
         this.current = snapshot.tiles().stream().filter(t -> t.id().equals(snapshot.currentTileId())).findFirst()
                 .orElse(snapshot.tiles().getFirst());
         this.selected = current;
@@ -69,7 +70,7 @@ public final class WorldMapScreen extends Screen {
 
     @Override
     protected void init() {
-        if (biomeAtlas == null) biomeAtlas = new BiomeAtlasTexture(snapshot);
+        if (biomeAtlas == null && !archipelago) biomeAtlas = new BiomeAtlasTexture(snapshot);
         Layout layout = layout();
         int bottomY = height - layout.footerHeight + Math.max(8, (layout.footerHeight - 20) / 2);
         addRenderableWidget(Button.builder(Component.literal("编辑区域组"), b ->
@@ -120,15 +121,57 @@ public final class WorldMapScreen extends Screen {
     }
 
     private void renderMap(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
-        MapRect map = mapRect(layout);
-        if (biomeAtlas != null) graphics.blit(biomeAtlas.location(), map.x, map.y, 0, 0,
-                map.width, map.height, MapViewport.atlasTextureExtent(map.width), MapViewport.atlasTextureExtent(map.height));
-        renderMergedRegionOutlines(graphics, layout);
+        if (archipelago) {
+            renderArchipelagoRegions(graphics, layout);
+            renderIslandMarkers(graphics, layout);
+        } else {
+            MapRect map = mapRect(layout);
+            if (biomeAtlas != null) graphics.blit(biomeAtlas.location(), map.x, map.y, 0, 0,
+                    map.width, map.height, MapViewport.atlasTextureExtent(map.width), MapViewport.atlasTextureExtent(map.height));
+            renderMergedRegionOutlines(graphics, layout);
+        }
         renderRegionIcons(graphics, layout);
         renderSelection(graphics, layout, mouseX, mouseY);
         renderAnchors(graphics, layout);
     }
 
+    /** Explored archipelago tiles read as their named biome zone; the island marker sits on top. */
+    private void renderArchipelagoRegions(GuiGraphics graphics, Layout layout) {
+        VisibleRange range = visibleRange(layout);
+        if (range.tileCount() > 2_048) return;
+        for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
+            for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
+                MapTile tile = tileGrid.get(key(mapX, mapZ));
+                if (tile == null) continue;
+                TileRect rect = tileRect(tile, layout);
+                if (!visible(rect, layout)) continue;
+                int color = 0x38000000 | darken(regionColor(tile.regionId()), 0.30);
+                graphics.fill(rect.x + 1, rect.y + 1, rect.right() - 1, rect.bottom() - 1, color);
+            }
+        }
+    }
+
+    /** One marker per island centre, never the 3x3 halo; labelled when zoomed in. */
+    private void renderIslandMarkers(GuiGraphics graphics, Layout layout) {
+        double cell = cellSize(layout);
+        if (cell < 4.0) return;
+        VisibleRange range = visibleRange(layout);
+        if (range.tileCount() > 4_096) return;
+        for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
+            for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
+                MapTile tile = tileGrid.get(key(mapX, mapZ));
+                if (tile == null || !tile.island()) continue;
+                TileRect rect = tileRect(tile, layout);
+                if (!visible(rect, layout)) continue;
+                int color = islandColor(tile.sites());
+                int radius = Math.max(2, Math.min(6, rect.width / 3));
+                int cx = rect.centerX(), cy = rect.centerY();
+                graphics.fill(cx - radius, cy - radius, cx + radius + 1, cy + radius + 1, 0xD8080D10);
+                graphics.fill(cx - radius + 1, cy - radius + 1, cx + radius, cy + radius, color);
+                if (cell >= 9.0) graphics.drawCenteredString(font, tile.sites(), cx, cy - radius - 11, IVORY);
+            }
+        }
+    }
     /** Only edges against another region or the atlas exterior are drawn; internal square seams disappear. */
     private void renderMergedRegionOutlines(GuiGraphics graphics, Layout layout) {
         if (cellSize(layout) < 5.0) return;
@@ -214,8 +257,8 @@ public final class WorldMapScreen extends Screen {
             TileRect rect = tileRect(tile, layout);
             if (isHovered) graphics.fill(rect.x, rect.y, rect.right(), rect.bottom(), 0x266FDFE5);
             outline(graphics, rect.inset(2), active ? 2 : 1, active ? GOLD : current ? IVORY : 0xB0D4E6E8);
-            if (layout.showLabels && configured(tile) && rect.width >= 25) {
-                String label = groupName(tile) + " · " + tile.biome().displayName();
+            if (layout.showLabels && (archipelago || configured(tile)) && rect.width >= 25) {
+                String label = archipelago ? groupName(tile) : groupName(tile) + " · " + tile.biome().displayName();
                 int labelWidth = Math.min(Math.max(34, rect.width * 2), font.width(label) + 8);
                 int labelX = rect.centerX() - labelWidth / 2;
                 graphics.fill(labelX, rect.centerY() - 6, labelX + labelWidth, rect.centerY() + 6, 0xD812181C);
@@ -250,7 +293,8 @@ public final class WorldMapScreen extends Screen {
         int titleX = 12;
         if (width >= 470) {
             graphics.drawString(font, title, titleX, 10, IVORY, false);
-            graphics.drawString(font, Component.literal(Math.round(zoom * 100.0) + "%  ·  群系图 / 滚轮缩放 / 中键拖动"), titleX, 24, MUTED, false);
+            graphics.drawString(font, Component.literal(Math.round(zoom * 100.0) + "%  ·  "
+                    + (archipelago ? "浮岛图" : "群系图") + " / 滚轮缩放 / 中键拖动"), titleX, 24, MUTED, false);
         }
         if (width >= 610) {
             int progressWidth = Math.min(130, Math.max(60, width / 6));
@@ -262,11 +306,17 @@ public final class WorldMapScreen extends Screen {
             graphics.fill(progressX, 27, progressX + progressWidth * progress / 100, 30, GOLD);
         }
     }
-
     private void renderFooter(GuiGraphics graphics, Layout layout) {
         int top = height - layout.footerHeight;
         MapRegion region = regionFor(selected);
-        graphics.drawString(font, (region.configured() ? region.name() + " · " : "") + selected.biome().displayName(), 14, top + 10, GOLD, false);
+        String title;
+        if (archipelago) {
+            title = (region.configured() || !region.name().equals(selected.regionId()) ? region.name() + " · " : "")
+                    + (selected.island() ? selected.sites() : selected.biome().displayName());
+        } else {
+            title = (region.configured() ? region.name() + " · " : "") + selected.biome().displayName();
+        }
+        graphics.drawString(font, title, 14, top + 10, GOLD, false);
         String details = "[" + selected.mapX() + ", " + selected.mapZ() + "]";
         if (region.configured() && !region.site().isBlank()) details += "  据点：" + region.site();
         graphics.drawString(font, Component.literal(details), 14, top + 25, MUTED, false);
@@ -278,8 +328,13 @@ public final class WorldMapScreen extends Screen {
     private void renderTileTooltip(GuiGraphics graphics, MapTile tile, int mouseX, int mouseY) {
         List<Component> lines = new ArrayList<>();
         MapRegion region = regionFor(tile);
-        if (region.configured()) lines.add(Component.literal(region.name()).withColor(GOLD));
-        lines.add(Component.translatable("screen.exworld.biome", tile.biome().displayName()));
+        if (archipelago) {
+            lines.add(Component.literal(region.name()).withColor(GOLD));
+            lines.add(Component.literal(tile.island() ? tile.sites() : tile.biome().displayName()));
+        } else {
+            if (region.configured()) lines.add(Component.literal(region.name()).withColor(GOLD));
+            lines.add(Component.translatable("screen.exworld.biome", tile.biome().displayName()));
+        }
         if (region.configured() && !region.site().isBlank()) lines.add(Component.literal("据点：" + region.site()));
         if (region.configured() && !region.resources().isBlank()) lines.add(Component.literal("资源：" + region.resources()));
         List<MapAnchor> anchors = snapshot.anchors().stream().filter(anchor -> anchor.tileId().equals(tile.id())).toList();
@@ -332,6 +387,14 @@ public final class WorldMapScreen extends Screen {
 
     private VisibleRange visibleRange(Layout layout) {
         double cell = cellSize(layout);
+        if (archipelago) {
+            int minX = (int) Math.floor(viewCenterX - width / 2.0 / cell) - 1;
+            int maxX = (int) Math.ceil(viewCenterX + width / 2.0 / cell) + 1;
+            double halfHeight = layout.viewportHeight() / 2.0 / cell;
+            int minZ = (int) Math.floor(viewCenterZ - halfHeight) - 1;
+            int maxZ = (int) Math.ceil(viewCenterZ + halfHeight) + 1;
+            return new VisibleRange(minX, minZ, maxX, maxZ);
+        }
         int minX = Math.max(snapshot.mapMinimumX(), (int) Math.floor(viewCenterX - width / 2.0 / cell) - 1);
         int maxX = Math.min(snapshot.mapMinimumX() + snapshot.mapWidth() - 1,
                 (int) Math.ceil(viewCenterX + width / 2.0 / cell) + 1);
@@ -361,6 +424,16 @@ public final class WorldMapScreen extends Screen {
     private static int regionColor(String id) {
         int[] palette = {0x79A4A8, 0xAE936D, 0x729176, 0xA3787B, 0x8984A8, 0xA3A073, 0x709590, 0xA27B96};
         return palette[Math.floorMod(id.hashCode(), palette.length)];
+    }
+    private static int islandColor(String sites) {
+        return switch (sites) {
+            case "主岛" -> 0xFFD9A6;
+            case "资源岛" -> 0x8FD48F;
+            case "秘境岛" -> 0xB58FE0;
+            case "死岛" -> 0xA8B0B4;
+            case "游岛" -> 0x6FD4E8;
+            default -> 0xE8D6A8;
+        };
     }
     private static int darken(int rgb, double factor) {
         int red = (int) (((rgb >> 16) & 0xFF) * factor);
