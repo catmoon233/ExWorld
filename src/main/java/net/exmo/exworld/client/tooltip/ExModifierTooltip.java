@@ -1,6 +1,7 @@
 package net.exmo.exworld.client.tooltip;
 
 import net.exmo.exmodifier.api.AppliedModifierView;
+import net.exmo.exmodifier.api.ExModifierApi;
 import net.exmo.exmodifier.core.data.AttributeSpec;
 import net.exmo.exmodifier.core.data.ModifierEntryDefinition;
 import net.exmo.exmodifier.core.data.QualityDefinition;
@@ -9,6 +10,7 @@ import net.exmo.exmodifier.core.data.SuitLevel;
 import net.exmo.exmodifier.core.registry.ExModifierCatalog;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -26,6 +28,14 @@ public final class ExModifierTooltip {
 
     public record SuitBonus(int pieces, String text, boolean active) {}
 
+    public record SlotSection(int total, int unlocked, List<String> names) {
+        public SlotSection {
+            names = List.copyOf(names == null ? List.of() : names);
+            total = Math.max(0, total);
+            unlocked = Math.max(0, Math.min(total, unlocked));
+        }
+    }
+
     public record SuitSection(String name, int owned, int required, List<SuitBonus> bonuses) {
         public SuitSection {
             name = name == null ? "" : name;
@@ -33,6 +43,23 @@ public final class ExModifierTooltip {
             owned = Math.max(0, owned);
             required = Math.max(1, required);
         }
+    }
+
+    public static SlotSection slotSection(ItemStack stack, ExModifierCatalog catalog, Function<String, String> translate) {
+        if (stack == null || stack.isEmpty()) return new SlotSection(0, 0, List.of());
+        ExModifierCatalog source = catalog == null ? ExModifierCatalog.EMPTY : catalog;
+        Function<String, String> tr = translate == null ? key -> key : translate;
+        List<ResourceLocation> unlockedIds = ExModifierApi.unlockedSlots(stack).slots();
+        int total = source.slots().size();
+        if (total == 0 && unlockedIds.isEmpty()) return new SlotSection(0, 0, List.of());
+        List<String> names = new ArrayList<>(unlockedIds.size());
+        for (ResourceLocation id : unlockedIds) {
+            String key = "tooltip.exmodifier.slot." + id.getPath();
+            String name = tr.apply(key);
+            if (name == null || name.isBlank() || name.equals(key)) name = pretty(id.getPath());
+            names.add(name);
+        }
+        return new SlotSection(Math.max(total, unlockedIds.size()), unlockedIds.size(), names);
     }
 
     public static List<Chip> chips(

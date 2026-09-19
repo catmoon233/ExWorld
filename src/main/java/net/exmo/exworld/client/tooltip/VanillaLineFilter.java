@@ -1,5 +1,7 @@
 package net.exmo.exworld.client.tooltip;
 
+import net.minecraft.network.chat.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,10 +14,15 @@ public final class VanillaLineFilter {
 
     private VanillaLineFilter() {}
 
-    public record Line(String translationKey, String text) {
+    public record Line(String translationKey, String text, Component component) {
+        public Line(String translationKey, String text) {
+            this(translationKey, text, Component.literal(text == null ? "" : text));
+        }
+
         public Line {
             translationKey = translationKey == null ? "" : translationKey;
             text = text == null ? "" : text;
+            component = component == null ? Component.literal(text) : component;
         }
 
         public boolean blank() {

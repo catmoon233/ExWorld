@@ -1,43 +1,77 @@
 package net.exmo.exworld.client.tooltip;
 
+import com.mojang.math.Axis;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.world.item.ItemStack;
 
-/** Draws panel chrome, badges, and section headers for the themed tooltip. */
+/** Draws panel chrome, badges, section headers, glow and animated item icons for the themed tooltip. */
 public final class TooltipPainter {
     private TooltipPainter() {}
 
-    public static void drawPanel(GuiGraphics graphics, int x, int y, int width, int height, TooltipTheme theme, long timeMs) {
-        fillGradient(graphics, x, y, width, height, theme.bgTop(), theme.bgBottom());
+    public static void drawGlow(GuiGraphics graphics, int x, int y, int width, int height, int accent, float fade) {
+        int outer = withAlpha(RarityPalette.brighten(accent, 0.30f), 0.14f * fade);
+        int inner = withAlpha(accent, 0.06f * fade);
+        drawRect(graphics, x - 2, y - 2, width + 4, height + 4, inner);
+        drawRect(graphics, x - 1, y - 1, width + 2, height + 2, outer);
+    }
+
+    public static void drawPanel(GuiGraphics graphics, int x, int y, int width, int height,
+                                 TooltipTheme theme, int accent, float fade, long timeMs) {
+        TooltipTheme t = theme.withAlpha(fade);
+        fillGradient(graphics, x, y, width, height, t.bgTop(), t.bgBottom());
         int headerH = TooltipLayout.PAD + TooltipLayout.headerHeight();
-        graphics.fill(x, y, x + width, y + headerH, theme.titleBar());
-        graphics.fill(x + 1, y + 1, x + width - 1, y + 2, theme.borderInner());
-        graphics.fill(x + 1, y + height - 2, x + width - 1, y + height - 1, theme.borderInner());
-        graphics.fill(x + 1, y + 1, x + 2, y + height - 1, theme.borderInner());
-        graphics.fill(x + width - 2, y + 1, x + width - 1, y + height - 1, theme.borderInner());
-        drawRect(graphics, x, y, width, height, theme.border());
-        drawFlow(graphics, x, y, width, height, theme.flow(), timeMs);
+        int hTop = withAlpha(RarityPalette.brighten(accent, 0.12f), 0.22f * fade);
+        int hBottom = withAlpha(RarityPalette.darken(accent, 0.30f), 0.18f * fade);
+        fillGradient(graphics, x, y, width, headerH, hTop, hBottom);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + 2, t.borderInner());
+        graphics.fill(x + 1, y + height - 2, x + width - 1, y + height - 1, t.borderInner());
+        graphics.fill(x + 1, y + 1, x + 2, y + height - 1, t.borderInner());
+        graphics.fill(x + width - 2, y + 1, x + width - 1, y + height - 1, t.borderInner());
+        drawRect(graphics, x, y, width, height, t.border());
+        drawFlow(graphics, x, y, width, height, t.flow(), timeMs);
     }
 
-    public static void drawSlot(GuiGraphics graphics, int x, int y, TooltipTheme theme) {
+    public static void drawSlot(GuiGraphics graphics, int x, int y, TooltipTheme theme, float fade) {
+        TooltipTheme t = theme.withAlpha(fade);
         int size = TooltipLayout.SLOT;
-        graphics.fill(x, y, x + size, y + size, theme.slotFill());
-        drawRect(graphics, x, y, size, size, theme.borderInner());
+        graphics.fill(x, y, x + size, y + size, t.slotFill());
+        drawRect(graphics, x, y, size, size, t.borderInner());
     }
 
-    public static int drawBadge(GuiGraphics graphics, Font font, String label, int x, int y, int bg, int fg) {
+    public static void drawDiamondFrame(GuiGraphics graphics, int centerX, int centerY, int radius, int color) {
+        int r = Math.max(2, radius);
+        graphics.fill(centerX, centerY - r, centerX + 1, centerY - r + 2, color);
+        graphics.fill(centerX, centerY + r - 2, centerX + 1, centerY + r, color);
+        graphics.fill(centerX - r, centerY, centerX - r + 2, centerY + 1, color);
+        graphics.fill(centerX + r - 2, centerY, centerX + r, centerY + 1, color);
+    }
+
+    public static int drawBadge(GuiGraphics graphics, Font font, String label, int x, int y,
+                                int bg, int fg, int clipLeft, int clipRight) {
         int width = TooltipLayout.chipWidth(font.width(label));
-        graphics.fill(x, y, x + width, y + TooltipLayout.LINE, bg);
-        graphics.drawString(font, label, x + TooltipLayout.CHIP_PAD_H, y, fg & 0x00FFFFFF | 0xFF000000, false);
-        return x + width;
+        int end = x + width;
+        int left = Math.max(x, clipLeft);
+        int right = Math.min(end, clipRight);
+        if (left < right) {
+            boolean clipped = left != x || right != end;
+            if (clipped) graphics.enableScissor(left, y, right, y + TooltipLayout.LINE);
+            graphics.fill(x, y, end, y + TooltipLayout.LINE, bg);
+            graphics.drawString(font, label, x + TooltipLayout.CHIP_PAD_H, y, fg, false);
+            if (clipped) graphics.disableScissor();
+        }
+        return end;
     }
 
-    public static void drawSeparator(GuiGraphics graphics, int x, int y, int width, int color) {
-        int mid = x + width / 2;
-        graphics.fill(x, y, mid, y + 1, color & 0x00FFFFFF);
-        graphics.fill(mid, y, x + width, y + 1, color);
+    public static void drawSeparator(GuiGraphics graphics, int x, int y, int width, int accent, float fade) {
+        int to = withAlpha(accent, 0.60f * fade);
+        int from = withAlpha(accent, 0.04f * fade);
+        for (int i = 0; i < width; i++) {
+            float t = 1.0f - Math.abs(i - width / 2.0f) / (width / 2.0f);
+            graphics.fill(x + i, y, x + i + 1, y + 1, RarityPalette.lerp(from, to, t));
+        }
     }
 
     public static void drawSectionHeader(GuiGraphics graphics, Font font, String text, int x, int y, int color) {
@@ -45,12 +79,60 @@ public final class TooltipPainter {
     }
 
     public static void drawBodyLine(GuiGraphics graphics, Font font, String text, int x, int y, int color) {
-        graphics.drawString(font, text, x, y, color, false);
+        Component line = Component.literal(text).withStyle(Style.EMPTY.withColor(color));
+        graphics.drawString(font, line, x, y, 0xFFFFFFFF, false);
     }
 
-    public static void drawItemIcon(GuiGraphics graphics, ItemStack stack, int slotX, int slotY) {
-        int inset = (TooltipLayout.SLOT - TooltipLayout.ICON) / 2;
-        graphics.renderItem(stack, slotX + inset, slotY + inset);
+    /** Draws a vanilla line keeping its original style colours; {@code defaultColor} applies only when unstyled. */
+    public static void drawComponent(GuiGraphics graphics, Font font, Component component, int x, int y, int defaultColor) {
+        int base = component.getStyle().getColor() != null ? 0xFFFFFFFF : defaultColor;
+        graphics.drawString(font, component, x, y, base, false);
+    }
+
+    /** simplytooltips-style staggered square pip for the Slots section. */
+    public static void drawAnimatedPip(GuiGraphics graphics, int x, int y, int size,
+                                       int color, int topHighlight, long timeMs, int seqIdx) {
+        long t = timeMs - seqIdx * 40L;
+        float scale = t <= 0 ? 0.6f : t >= 120 ? 1f : 0.6f + 0.4f * easeOutCubic(t / 120f);
+        int half = Math.max(1, (int) Math.ceil(size * scale / 2.0));
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        graphics.fill(cx - half, cy - half, cx + half, cy + half, color);
+        graphics.fill(cx - half, cy - half, cx + half, cy - half + 1, topHighlight);
+    }
+
+    public static void drawFooterDots(GuiGraphics graphics, int centerX, int y, TooltipTheme theme, int accent, float fade, long timeMs) {
+        float pulse = 0.5f + 0.5f * (float) Math.sin(timeMs * 0.004);
+        for (int i = 0; i < 3; i++) {
+            int color = i == 1
+                    ? RarityPalette.lerp(theme.borderInner(), accent, pulse)
+                    : withAlpha(theme.borderInner(), 0.8f * fade);
+            graphics.fill(centerX - 7 + i * 7, y, centerX - 5 + i * 7, y + 2, color);
+        }
+    }
+
+    /** simplytooltips-style animated icon: breathe + bob + Z tilt; equipment items rotate in 3D around Y. */
+    public static void drawAnimatedItem(GuiGraphics graphics, ItemStack stack, int centerX, int centerY,
+                                        long timeMs, boolean equipment) {
+        graphics.pose().pushPose();
+        double breathe;
+        double bob = Math.sin(timeMs * 0.0026 + 1.1) * 0.7;
+        if (equipment) {
+            breathe = 1.0 + Math.sin(timeMs * 0.0042) * 0.08;
+            double spinY = (timeMs % 6000L) / 6000.0 * 360.0;
+            graphics.pose().translate(centerX, centerY + bob, 0);
+            graphics.pose().mulPose(Axis.YP.rotationDegrees((float) spinY));
+            graphics.pose().scale((float) breathe, (float) breathe, 1.0f);
+        } else {
+            breathe = 1.0 + Math.sin(timeMs * 0.0042) * 0.05;
+            float spinZ = (float) (Math.sin(timeMs * 0.0018) * 4.0);
+            graphics.pose().translate(centerX, centerY + bob, 0);
+            graphics.pose().mulPose(Axis.ZP.rotationDegrees(spinZ));
+            graphics.pose().scale((float) breathe, (float) breathe, 1.0f);
+        }
+        graphics.pose().translate(-8.0f, -8.0f, 0.0f);
+        graphics.renderItem(stack, 0, 0);
+        graphics.pose().popPose();
     }
 
     private static void drawRect(GuiGraphics graphics, int x, int y, int width, int height, int color) {
@@ -64,7 +146,7 @@ public final class TooltipPainter {
         if (width <= 0 || height <= 0) return;
         for (int i = 0; i < height; i++) {
             float t = height == 1 ? 0f : i / (float) (height - 1);
-            graphics.fill(x, y + i, x + width, y + i + 1, lerp(top, bottom, t));
+            graphics.fill(x, y + i, x + width, y + i + 1, RarityPalette.lerp(top, bottom, t));
         }
     }
 
@@ -95,13 +177,13 @@ public final class TooltipPainter {
         }
     }
 
-    private static int lerp(int a, int b, float t) {
-        int aa = (a >>> 24) & 0xFF, ar = (a >>> 16) & 0xFF, ag = (a >>> 8) & 0xFF, ab = a & 0xFF;
-        int ba = (b >>> 24) & 0xFF, br = (b >>> 16) & 0xFF, bg = (b >>> 8) & 0xFF, bb = b & 0xFF;
-        int ra = (int) (aa + (ba - aa) * t);
-        int rr = (int) (ar + (br - ar) * t);
-        int rg = (int) (ag + (bg - ag) * t);
-        int rb = (int) (ab + (bb - ab) * t);
-        return (ra << 24) | (rr << 16) | (rg << 8) | rb;
+    private static float easeOutCubic(float t) {
+        float x = Math.max(0f, Math.min(1f, t));
+        return 1.0f - (1.0f - x) * (1.0f - x) * (1.0f - x);
+    }
+
+    private static int withAlpha(int color, float alpha) {
+        int a = Math.max(0, Math.min(255, (int) (alpha * 255)));
+        return (color & 0x00FFFFFF) | (a << 24);
     }
 }

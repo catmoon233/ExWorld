@@ -12,6 +12,8 @@ public final class TooltipCapture {
     private static int maxScroll;
     private static boolean showing;
     private static boolean renderedThisFrame;
+    private static long tooltipStartNanos = System.nanoTime();
+    private static long itemStartNanos = System.nanoTime();
 
     private TooltipCapture() {}
 
@@ -21,9 +23,13 @@ public final class TooltipCapture {
 
     public static void begin(ItemStack item, List<net.minecraft.network.chat.Component> tooltipLines) {
         ItemStack next = item == null ? ItemStack.EMPTY : item;
+        if (stack.isEmpty() && !next.isEmpty()) {
+            tooltipStartNanos = System.nanoTime();
+        }
         if (!ItemStack.isSameItemSameComponents(stack, next)) {
             scroll = 0;
             lines = List.of();
+            itemStartNanos = System.nanoTime();
         }
         stack = next;
         if (tooltipLines != null && !tooltipLines.isEmpty()) {
@@ -55,6 +61,14 @@ public final class TooltipCapture {
 
     public static boolean showing() {
         return showing;
+    }
+
+    public static long tooltipTimeMs() {
+        return (System.nanoTime() - tooltipStartNanos) / 1_000_000L;
+    }
+
+    public static long itemTimeMs() {
+        return (System.nanoTime() - itemStartNanos) / 1_000_000L;
     }
 
     public static boolean scrollBy(double deltaY) {

@@ -33,7 +33,7 @@ public final class TooltipModelFactory {
     private static final int TAG_WEAPON = 0xFFDB5E71;
     private static final int TAG_TOOL = 0xFF5E8ACF;
     private static final int TAG_ARMOR = 0xFFE2A834;
-    private static final int TAG_ITEM = 0xFF8A8A90;
+    private static final int TAG_ITEM = 0xFF9AA3B0;
 
     private TooltipModelFactory() {}
 
@@ -41,7 +41,7 @@ public final class TooltipModelFactory {
         ItemStack item = stack == null ? ItemStack.EMPTY : stack;
         Function<String, String> translate = TooltipModelFactory::translate;
         List<NameTag> tags = new ArrayList<>();
-        categoryTag(item).ifPresent(tags::add);
+        tags.add(defaultTag(item));
 
         ExModifierCatalog catalog = ExModifierCatalog.current();
         Optional<net.minecraft.resources.ResourceLocation> quality = ExModifierApi.qualityOn(item);
@@ -56,16 +56,17 @@ public final class TooltipModelFactory {
         if (rawLines != null) {
             for (Component component : rawLines) lines.add(from(component));
         }
-        List<String> body = VanillaLineFilter.body(lines).stream().map(VanillaLineFilter.Line::text).toList();
+        List<Component> body = VanillaLineFilter.body(lines).stream().map(VanillaLineFilter.Line::component).toList();
 
         Rarity rarity = item.isEmpty() ? Rarity.COMMON : item.getRarity();
         return new TooltipModel(
-                item.isEmpty() ? "" : item.getHoverName().getString(),
+                item.isEmpty() ? Component.empty() : item.getHoverName(),
                 tags,
                 translate.apply(rarityKey(rarity)),
                 rarity,
                 quality,
                 chips,
+                ExModifierTooltip.slotSection(item, catalog, translate),
                 ExModifierTooltip.suits(onItem, equipped, catalog, translate),
                 body
         );
@@ -77,12 +78,16 @@ public final class TooltipModelFactory {
         if (component.getContents() instanceof TranslatableContents translatable) {
             key = translatable.getKey();
         }
-        return new VanillaLineFilter.Line(key, component.getString());
+        return new VanillaLineFilter.Line(key, component.getString(), component);
     }
 
-    private static Optional<NameTag> categoryTag(ItemStack stack) {
+    public static Optional<NameTag> categoryTag(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return Optional.empty();
-        Item item = stack.getItem();
+        return categoryTag(stack.getItem());
+    }
+
+    public static Optional<NameTag> categoryTag(Item item) {
+        if (item == null) return Optional.empty();
         if (item instanceof SwordItem) return Optional.of(tag("sword", TAG_WEAPON));
         if (item instanceof AxeItem) return Optional.of(tag("axe", TAG_WEAPON));
         if (item instanceof BowItem || item instanceof CrossbowItem) return Optional.of(tag("bow", TAG_WEAPON));
@@ -99,12 +104,17 @@ public final class TooltipModelFactory {
                 default -> tag("armor", TAG_ARMOR);
             });
         }
-        if (item instanceof PotionItem || stack.has(DataComponents.POTION_CONTENTS)) {
-            return Optional.of(tag("potion", 0xFF9D62CA));
-        }
-        if (stack.has(DataComponents.FOOD)) return Optional.of(tag("food", 0xFF6FCB63));
-        if (item instanceof BlockItem) return Optional.of(tag("block", TAG_ITEM));
         return Optional.of(tag("item", TAG_ITEM));
+    }
+
+    public static NameTag defaultTag(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return tag("item", TAG_ITEM);
+        if (stack.getItem() instanceof PotionItem || stack.has(DataComponents.POTION_CONTENTS)) {
+            return tag("potion", 0xFF9D62CA);
+        }
+        if (stack.has(DataComponents.FOOD)) return tag("food", 0xFF6FCB63);
+        if (stack.getItem() instanceof BlockItem) return tag("block", TAG_ITEM);
+        return categoryTag(stack.getItem()).orElse(tag("item", TAG_ITEM));
     }
 
     private static NameTag tag(String path, int color) {

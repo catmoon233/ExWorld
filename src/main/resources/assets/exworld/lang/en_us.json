@@ -505,6 +505,7 @@
   "tooltip.exworld.rarity.epic": "Epic",
   "tooltip.exworld.section.affixes": "Affixes",
   "tooltip.exworld.section.suit": "Set",
+  "tooltip.exworld.section.slots": "Slots",
   "tooltip.exworld.tag.item": "Item",
   "tooltip.exworld.tag.sword": "Sword",
   "tooltip.exworld.tag.axe": "Axe",
@@ -520,5 +521,16 @@
   "tooltip.exworld.tag.boots": "Boots",
   "tooltip.exworld.tag.potion": "Potion",
   "tooltip.exworld.tag.food": "Food",
-  "tooltip.exworld.tag.block": "Block"
+  "tooltip.exworld.tag.block": "Block",
+  "item.exworld.basic_storage_core": "Basic Storage Core",
+  "screen.exworld.backpack": "Backpack",
+  "screen.exworld.backpack_tab": "Backpack",
+  "screen.exworld.character_tab": "Character",
+  "screen.exworld.quests_tab": "Quests",
+  "screen.exworld.backpack_accessories": "Accessories",
+  "screen.exworld.backpack_equipment": "Equipment",
+  "screen.exworld.creative_edit": "Edit",
+  "screen.exworld.creative_size": "Size",
+  "screen.exworld.creative_quality": "Quality",
+  "screen.exworld.creative_save": "Save"
 }

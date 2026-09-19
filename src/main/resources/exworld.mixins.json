@@ -4,7 +4,8 @@
   "package": "net.exmo.exworld.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "DimensionTypeMixin"
+    "DimensionTypeMixin",
+    "InventoryMixin"
   ],
   "client": [
     "client.BlockRenderDispatcherMixin",
@@ -18,8 +19,7 @@
     "client.MouseHandlerMixin",
     "client.SoundEngineMixin",
     "client.SectionOcclusionGraphMixin",
-    "client.SpellBarOverlayMixin",
-    "client.GuiGraphicsTooltipMixin"
+    "client.SpellBarOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1

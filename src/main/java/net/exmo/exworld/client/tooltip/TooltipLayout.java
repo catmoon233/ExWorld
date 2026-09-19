@@ -5,8 +5,8 @@ import java.util.function.ToIntFunction;
 
 /** Shared geometry for the themed tooltip. Numbers follow EnhancedTooltips header spacing. */
 public final class TooltipLayout {
-    public static final int PAD = 8;
-    public static final int TITLE_OFFSET = 26;
+    public static final int PAD = 10;
+    public static final int TITLE_OFFSET = 30;
     public static final int SLOT = 20;
     public static final int ICON = 16;
     public static final int LINE = 9;
@@ -14,14 +14,14 @@ public final class TooltipLayout {
     public static final int CHIP_GAP = 3;
     public static final int TAG_GAP = 3;
     public static final int ROW_GAP = 3;
-    public static final int MAX_TEXT = 200;
+    public static final int MAX_TEXT = 220;
     public static final int MAX_BODY = 180;
     public static final int MIN_WIDTH = 120;
 
     private TooltipLayout() {}
 
     public static int headerHeight() {
-        return Math.max(SLOT, LINE + 2 + LINE);
+        return 38;
     }
 
     public static int headerContentWidth(int titleWidth, int nameTagsWidth, int rarityWidth) {
@@ -38,6 +38,11 @@ public final class TooltipLayout {
     }
 
     public static int chipBlockHeight(int rows) {
+        if (rows <= 0) return 0;
+        return rows * LINE + (rows - 1) * ROW_GAP;
+    }
+
+    public static int tagBlockHeight(int rows) {
         if (rows <= 0) return 0;
         return rows * LINE + (rows - 1) * ROW_GAP;
     }

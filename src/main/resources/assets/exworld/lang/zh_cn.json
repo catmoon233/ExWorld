@@ -505,6 +505,7 @@
   "tooltip.exworld.rarity.epic": "史诗",
   "tooltip.exworld.section.affixes": "词条",
   "tooltip.exworld.section.suit": "套装",
+  "tooltip.exworld.section.slots": "槽位",
   "tooltip.exworld.tag.item": "物品",
   "tooltip.exworld.tag.sword": "剑",
   "tooltip.exworld.tag.axe": "斧",
@@ -520,5 +521,16 @@
   "tooltip.exworld.tag.boots": "靴子",
   "tooltip.exworld.tag.potion": "药水",
   "tooltip.exworld.tag.food": "食物",
-  "tooltip.exworld.tag.block": "方块"
+  "tooltip.exworld.tag.block": "方块",
+  "item.exworld.basic_storage_core": "低级储藏核心",
+  "screen.exworld.backpack": "背包",
+  "screen.exworld.backpack_tab": "背包",
+  "screen.exworld.character_tab": "人物",
+  "screen.exworld.quests_tab": "任务",
+  "screen.exworld.backpack_accessories": "饰品",
+  "screen.exworld.backpack_equipment": "装备",
+  "screen.exworld.creative_edit": "编辑",
+  "screen.exworld.creative_size": "尺寸",
+  "screen.exworld.creative_quality": "品质",
+  "screen.exworld.creative_save": "保存"
 }
