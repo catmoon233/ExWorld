@@ -218,6 +218,7 @@ public class ShipEntity extends Entity {
     }
 
     private AABB localBounds() {
+        if (hull == null) return new AABB(0, 0, 0, 1, 1, 1);
         return new AABB(0, 0, 0, Math.max(1, hull.sizeX()), Math.max(1, hull.sizeY()), Math.max(1, hull.sizeZ()));
     }
 
