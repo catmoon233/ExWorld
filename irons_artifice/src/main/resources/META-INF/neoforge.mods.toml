@@ -1,0 +1,40 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "irons_artifice"
+version = "1.21.1-1.0.0"
+displayName = "Iron's Arms 'n Artifice"
+logoFile = "iaa_logo_gunmetal_lowres.png"
+credits = "Iron431"
+description = '''
+Explore the game as an Artificer: Craft, tinker, and engineer historical-fantasy firearm builds!
+Local 1.21.1 NeoForge port. Original project remains All Rights Reserved.
+'''
+
+enumExtensions = "META-INF/enumextensions.json"
+
+[[mixins]]
+config = "irons_artifice.mixins.json"
+
+[[dependencies.irons_artifice]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.irons_artifice]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.22)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.irons_artifice]]
+modId = "geckolib"
+type = "required"
+versionRange = "[4,)"
+ordering = "NONE"
+side = "BOTH"

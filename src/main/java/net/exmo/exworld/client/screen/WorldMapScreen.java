@@ -7,6 +7,9 @@ import net.exmo.exworld.world.model.WorldDimensions;
 import net.exmo.exworld.world.model.WorldSnapshot;
 import net.exmo.exworld.world.model.MapTile;
 import net.exmo.exworld.network.RequestWorldGroupEditorPayload;
+import net.exmo.exworld.network.MapTeleportPayload;
+import net.exmo.exworld.Config;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -43,6 +46,11 @@ public final class WorldMapScreen extends Screen {
     /** Map-space coordinate held at the viewport center; it is independent of GUI scale and pixel rounding. */
     private double viewCenterX;
     private double viewCenterZ;
+    private boolean teleportOpen;
+    private int teleportX;
+    private int teleportZ;
+    private int popupX;
+    private int popupY;
     public WorldMapScreen(WorldSnapshot snapshot) {
         super(Component.translatable("screen.exworld.world_map"));
         this.snapshot = snapshot;
@@ -70,12 +78,14 @@ public final class WorldMapScreen extends Screen {
 
     @Override
     protected void init() {
-        if (biomeAtlas == null && !archipelago) biomeAtlas = new BiomeAtlasTexture(snapshot);
+        if (biomeAtlas == null && !archipelago && !Config.decryptionMode) biomeAtlas = new BiomeAtlasTexture(snapshot);
         Layout layout = layout();
         int bottomY = height - layout.footerHeight + Math.max(8, (layout.footerHeight - 20) / 2);
-        addRenderableWidget(Button.builder(Component.literal("编辑区域组"), b ->
-                PacketDistributor.sendToServer(new RequestWorldGroupEditorPayload()))
-                .bounds(Math.max(12, width - 278), bottomY, 96, 20).build());
+        if (!Config.decryptionMode || admin()) {
+            addRenderableWidget(Button.builder(Component.literal("编辑区域组"), b ->
+                    PacketDistributor.sendToServer(new RequestWorldGroupEditorPayload()))
+                    .bounds(Math.max(12, width - 278), bottomY, 96, 20).build());
+        }
         addRenderableWidget(Button.builder(Component.translatable("screen.exworld.locate_current"), b -> selectCurrent())
                 .bounds(width - 174, bottomY, 92, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
@@ -99,11 +109,12 @@ public final class WorldMapScreen extends Screen {
         graphics.enableScissor(0, layout.headerHeight, width, height - layout.footerHeight);
         renderMap(graphics, layout, mouseX, mouseY);
         graphics.disableScissor();
-        renderHeader(graphics, layout);
+        renderHeader(graphics, layout, mouseX, mouseY);
         renderFooter(graphics, layout);
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (teleportOpen) renderTeleportPopup(graphics);
         MapTile hovered = tileAt(mouseX, mouseY, layout);
-        if (hovered != null) renderTileTooltip(graphics, hovered, mouseX, mouseY);
+        if (hovered != null && !Config.decryptionMode) renderTileTooltip(graphics, hovered, mouseX, mouseY);
     }
 
     private void renderFrame(GuiGraphics graphics, Layout layout) {
@@ -121,6 +132,13 @@ public final class WorldMapScreen extends Screen {
     }
 
     private void renderMap(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
+        if (Config.decryptionMode) {
+            renderConfiguredFills(graphics, layout);
+            renderMergedRegionOutlines(graphics, layout);
+            renderRegionIcons(graphics, layout);
+            renderCurrentMarker(graphics, layout);
+            return;
+        }
         if (archipelago) {
             renderArchipelagoRegions(graphics, layout);
         } else {
@@ -276,14 +294,17 @@ public final class WorldMapScreen extends Screen {
         return MapViewport.cellSize(width, layout.viewportHeight(), snapshot.mapWidth(), snapshot.mapHeight(), zoom);
     }
 
-    private void renderHeader(GuiGraphics graphics, Layout layout) {
+    private void renderHeader(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
         int titleX = 12;
         if (width >= 470) {
             graphics.drawString(font, title, titleX, 10, IVORY, false);
             graphics.drawString(font, Component.literal(Math.round(zoom * 100.0) + "%  ·  "
                     + (archipelago ? "浮岛图" : "群系图") + " / 滚轮缩放 / 中键拖动"), titleX, 24, MUTED, false);
         }
-        if (width >= 610) {
+        if (Config.decryptionMode) {
+            String readout = cursorLabel(mouseX, mouseY, layout);
+            graphics.drawString(font, readout, width - font.width(readout) - 12, 10, IVORY, false);
+        } else if (width >= 610) {
             int progressWidth = Math.min(130, Math.max(60, width / 6));
             int progressX = width - progressWidth - 14;
             int progress = progress();
@@ -332,10 +353,92 @@ public final class WorldMapScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        MapTile tile = tileAt(mouseX, mouseY, layout());
+        if (teleportOpen && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && inTeleportButton(mouseX, mouseY)) {
+            PacketDistributor.sendToServer(new MapTeleportPayload(teleportX, teleportZ));
+            teleportOpen = false;
+            onClose();
+            return true;
+        }
+        Layout layout = layout();
+        if (Config.decryptionMode && minecraft != null && minecraft.player != null && minecraft.player.isCreative()
+                && button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && inViewport(mouseY, layout)) {
+            int[] world = worldAt(mouseX, mouseY, layout);
+            teleportX = world[0];
+            teleportZ = world[1];
+            popupX = (int) mouseX;
+            popupY = (int) mouseY;
+            teleportOpen = true;
+            return true;
+        }
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) teleportOpen = false;
+        MapTile tile = tileAt(mouseX, mouseY, layout);
         if (tile != null && button == 0) { selected = tile; return true; }
         return super.mouseClicked(mouseX, mouseY, button);
     }
+
+    private void renderConfiguredFills(GuiGraphics graphics, Layout layout) {
+        VisibleRange range = visibleRange(layout);
+        if (range.tileCount() > 2_048) return;
+        for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
+            for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
+                MapTile tile = tileGrid.get(key(mapX, mapZ));
+                if (tile == null || !configured(tile)) continue;
+                TileRect rect = tileRect(tile, layout);
+                if (!visible(rect, layout)) continue;
+                graphics.fill(rect.x + 1, rect.y + 1, rect.right() - 1, rect.bottom() - 1, 0x66000000 | regionColor(tile.regionId()));
+            }
+        }
+    }
+
+    private void renderCurrentMarker(GuiGraphics graphics, Layout layout) {
+        TileRect rect = tileRect(current, layout);
+        graphics.fill(rect.centerX() - 2, rect.centerY() - 2, rect.centerX() + 3, rect.centerY() + 3, GOLD);
+    }
+
+    private void renderTeleportPopup(GuiGraphics graphics) {
+        int w = 92;
+        int h = 22;
+        int x = Math.min(popupX, width - w - 8);
+        int y = Math.min(popupY, height - h - 8);
+        graphics.fill(x, y, x + w, y + h, 0xF012181C);
+        graphics.fill(x, y, x + w, y + 1, GOLD);
+        graphics.drawCenteredString(font, Component.translatable("screen.exworld.teleport_here"), x + w / 2, y + 7, IVORY);
+    }
+
+    private boolean inTeleportButton(double mouseX, double mouseY) {
+        int w = 92;
+        int h = 22;
+        int x = Math.min(popupX, width - w - 8);
+        int y = Math.min(popupY, height - h - 8);
+        return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
+    }
+
+    private int[] worldAt(double mouseX, double mouseY, Layout layout) {
+        double cell = cellSize(layout);
+        int mapX = (int) Math.floor(viewCenterX + (mouseX - width / 2.0) / cell + 0.5);
+        int mapZ = (int) Math.floor(viewCenterZ + (mouseY - layout.viewportCenterY()) / cell + 0.5);
+        return new int[]{WorldDimensions.groupCenter(mapX, snapshot.groupChunks()), WorldDimensions.groupCenter(mapZ, snapshot.groupChunks())};
+    }
+
+    private String cursorLabel(int mouseX, int mouseY, Layout layout) {
+        if (!inViewport(mouseY, layout)) return Component.translatable("screen.exworld.map_cursor_empty").getString();
+        int[] world = worldAt(mouseX, mouseY, layout);
+        double dx = minecraft != null && minecraft.player != null ? world[0] - minecraft.player.getX() : world[0];
+        double dz = minecraft != null && minecraft.player != null ? world[1] - minecraft.player.getZ() : world[1];
+        return Component.translatable("screen.exworld.map_cursor", compass(dx, dz), world[0], world[1]).getString();
+    }
+
+    private static String compass(double dx, double dz) {
+        String[] names = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
+        double angle = Math.atan2(dx, -dz);
+        int index = Math.floorMod((int) Math.round(angle / (Math.PI / 4.0)), names.length);
+        return names[index];
+    }
+
+    private boolean admin() {
+        return minecraft != null && minecraft.player != null && (minecraft.player.isCreative() || minecraft.player.hasPermissions(2));
+    }
+
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {

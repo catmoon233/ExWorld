@@ -40,6 +40,7 @@ final class WorldNbtCodec {
         tag.putString("icon", region.icon());
         tag.putString("site", region.site()); tag.putString("resources", region.resources());
         tag.putBoolean("configured", region.configured());
+        tag.putBoolean("cannot_leave", region.cannotLeave());
         return tag;
     }
 
@@ -49,6 +50,7 @@ final class WorldNbtCodec {
                 : tileTags.stream().map(value -> value.getAsString()).toList();
         return new Region(tag.getString("id"), tileIds, tag.getString("name"), tag.getLong("story_seed"),
                 tag.contains("icon") ? tag.getString("icon") : "", tag.contains("site") ? tag.getString("site") : "",
-                tag.contains("resources") ? tag.getString("resources") : "", tag.getBoolean("configured"));
+                tag.contains("resources") ? tag.getString("resources") : "", tag.getBoolean("configured"),
+                tag.getBoolean("cannot_leave"));
     }
 }

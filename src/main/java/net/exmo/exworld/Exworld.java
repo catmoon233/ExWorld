@@ -40,9 +40,13 @@ public final class Exworld {
         PlayerProgressSystem.registerEvents();
         ShipSystem.registerEvents();
         InventorySystem.registerEvents();
+        net.exmo.exworld.npc.NpcSystem.register(modBus);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldMapClient.register(modBus);
+            net.exmo.exworld.client.npc.NpcClient.register(modBus);
+            net.exmo.exworld.client.webview.WebView2Client.register(modBus);
         }
         container.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        container.registerConfig(ModConfig.Type.SERVER, Config.SERVER_SPEC);
     }
 }

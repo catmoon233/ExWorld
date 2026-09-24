@@ -137,6 +137,63 @@ public final class InventoryGrid<T> {
         return -1;
     }
 
+
+    /**
+     * Origin used when dropping a multi-cell item. The clicked cell may be any cell of the
+     * footprint, not only the top-left. If nothing covers that cell, the nearest adjacent
+     * origin that fits is used.
+     */
+    public int resolveOrigin(int cell, ItemFootprint footprint, int ignoreOwner) {
+        if (footprint == null || cell < 0 || cell >= CELLS) return -1;
+        if (canPlace(cell, footprint, ignoreOwner)) return cell;
+
+        int cx = x(cell);
+        int cy = y(cell);
+        int covering = nearestCoveringOrigin(cx, cy, footprint, ignoreOwner);
+        if (covering >= 0) return covering;
+        return nearestAdjacentOrigin(cx, cy, footprint, ignoreOwner);
+    }
+
+    private int nearestCoveringOrigin(int cx, int cy, ItemFootprint footprint, int ignoreOwner) {
+        int best = -1;
+        int bestScore = Integer.MAX_VALUE;
+        for (int dy = 0; dy < footprint.height(); dy++) {
+            for (int dx = 0; dx < footprint.width(); dx++) {
+                if (dx == 0 && dy == 0) continue;
+                int ox = cx - dx;
+                int oy = cy - dy;
+                if (ox < 0 || oy < 0 || ox >= COLUMNS || oy >= ROWS) continue;
+                int origin = index(ox, oy);
+                if (!canPlace(origin, footprint, ignoreOwner)) continue;
+                int score = dx + dy;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = origin;
+                }
+            }
+        }
+        return best;
+    }
+
+    private int nearestAdjacentOrigin(int cx, int cy, ItemFootprint footprint, int ignoreOwner) {
+        int best = -1;
+        int bestDist = Integer.MAX_VALUE;
+        for (int oy = Math.max(0, cy - 1); oy <= Math.min(ROWS - 1, cy + 1); oy++) {
+            for (int ox = Math.max(0, cx - 1); ox <= Math.min(COLUMNS - 1, cx + 1); ox++) {
+                if (ox == cx && oy == cy) continue;
+                int origin = index(ox, oy);
+                if (!canPlace(origin, footprint, ignoreOwner)) continue;
+                int dist = Math.abs(ox - cx) + Math.abs(oy - cy);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = origin;
+                }
+            }
+        }
+        return best;
+    }
+
+
     public List<Placed<T>> items() {
         List<Placed<T>> result = new ArrayList<>();
         for (int i = 0; i < CELLS; i++) {

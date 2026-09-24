@@ -42,6 +42,7 @@ final class WorldSnapshotCompression {
                 for (MapRegion region : snapshot.regions()) {
                     output.writeUTF(region.id()); output.writeUTF(region.name()); output.writeUTF(region.icon());
                     output.writeUTF(region.site()); output.writeUTF(region.resources()); output.writeBoolean(region.configured());
+                    output.writeBoolean(region.cannotLeave());
                 }
                 output.writeInt(snapshot.anchors().size());
                 for (MapAnchor anchor : snapshot.anchors()) {
@@ -81,7 +82,7 @@ final class WorldSnapshotCompression {
             int regionCount = bounded(input.readInt(), 0, MAX_TILES, "region count");
             List<MapRegion> regions = new ArrayList<>(regionCount);
             for (int i = 0; i < regionCount; i++) regions.add(new MapRegion(input.readUTF(), input.readUTF(), input.readUTF(),
-                    input.readUTF(), input.readUTF(), input.readBoolean()));
+                    input.readUTF(), input.readUTF(), input.readBoolean(), input.readBoolean()));
             int anchorCount = bounded(input.readInt(), 0, 4096, "anchor count");
             List<MapAnchor> anchors = new ArrayList<>(anchorCount);
             for (int i = 0; i < anchorCount; i++) {

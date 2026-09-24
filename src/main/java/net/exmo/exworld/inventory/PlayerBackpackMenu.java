@@ -97,10 +97,10 @@ public final class PlayerBackpackMenu extends AbstractContainerMenu {
     private void addEquipmentSlots() {
         PlayerBackpackData data = backpack.data();
                 addSlot(new Slot(data, PlayerBackpackData.WEAPON_1, InventoryLayout.WEAPON1_X, InventoryLayout.WEAPON1_Y) {
-            @Override public boolean isActive() { return equipmentPage(); }
+            @Override public boolean isActive() { return equipmentPage() && !net.exmo.exworld.Config.decryptionMode; }
         });
                 addSlot(new Slot(data, PlayerBackpackData.WEAPON_2, InventoryLayout.WEAPON2_X, InventoryLayout.WEAPON2_Y) {
-            @Override public boolean isActive() { return equipmentPage(); }
+            @Override public boolean isActive() { return equipmentPage() && !net.exmo.exworld.Config.decryptionMode; }
         });
         addSlot(new Slot(data, PlayerBackpackData.CORE, InventoryLayout.CORE_X, InventoryLayout.CORE_Y) {
             @Override public boolean mayPlace(ItemStack stack) {
@@ -125,12 +125,18 @@ public final class PlayerBackpackMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (slotId >= 0 && slotId < GRID_SLOTS) {
+        if (slotId >= 0 && slotId < GRID_SLOTS && clickType != ClickType.QUICK_CRAFT) {
             int owner = backpack.ownerOf(slotId);
-            if (owner >= 0 && owner != slotId) slotId = owner;
+            if (owner >= 0) {
+                slotId = owner;
+            } else if (!getCarried().isEmpty() && clickType == ClickType.PICKUP) {
+                int resolved = backpack.resolvePlacement(slotId, getCarried());
+                if (resolved >= 0) slotId = resolved;
+            }
         }
         super.clicked(slotId, button, clickType, player);
     }
+
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {

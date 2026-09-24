@@ -25,6 +25,7 @@ import net.minecraft.commands.Commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -116,13 +117,13 @@ public final class WorldSystem {
 
     /** Opens the server-authoritative collaborative editor from any connected client when the server enables it. */
     public static void openGroupEditor(ServerPlayer player) {
-        if (!Config.allowClientGroupEditing && !player.getServer().getPlayerList().isOp(player.getGameProfile())) return;
+        if (!canEditGroups(player)) return;
         WorldNetwork.sendGroupEditor(player, snapshot(player), "");
     }
 
     /** Validates one complete GUI draft, persists it, and refreshes the live group shape of every overworld player. */
     public static void saveGroupEdit(ServerPlayer player, SaveWorldGroupEditPayload payload) {
-        if (!Config.allowClientGroupEditing && !player.getServer().getPlayerList().isOp(player.getGameProfile())) return;
+        if (!canEditGroups(player)) return;
         try {
             WorldStateData state = state(player.getServer());
             if (payload.baseRevision() != state.groupRevision()) {
@@ -191,7 +192,29 @@ public final class WorldSystem {
         teleport(player, destination, tile.id());
     }
 
+    /** Creative-only map teleport. Non-creative packets are ignored. */
+    public static void creativeTeleport(ServerPlayer player, int worldX, int worldZ) {
+        if (!Config.decryptionMode || !player.isCreative()) return;
+        WorldStateData state = state(player.getServer());
+        int chunks = state.groupChunks();
+        if (!WorldDimensions.withinMaximumWorldBorder(WorldDimensions.groupCoordinate(worldX, chunks),
+                WorldDimensions.groupCoordinate(worldZ, chunks), chunks)) return;
+        ServerLevel level = player.getServer().overworld();
+        int y = standableY(level, worldX, worldZ);
+        String tileId = tileAt(state, worldX + 0.5, worldZ + 0.5).map(WorldTile::id).orElse("");
+        BlockPos destination = new BlockPos(worldX, y, worldZ);
+        if (tileId.isEmpty()) {
+            player.teleportTo(level, worldX + 0.5, y, worldZ + 0.5, player.getYRot(), player.getXRot());
+            return;
+        }
+        teleport(player, destination, tileId);
+    }
+
     private static void teleport(ServerPlayer player, BlockPos destination, String tileId) {
+        if (leavesLockedRegion(player, tileId)) {
+            player.displayClientMessage(Component.translatable("message.exworld.region_locked"), true);
+            return;
+        }
         ServerLevel level = player.getServer().overworld();
         player.teleportTo(level, destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5, player.getYRot(), player.getXRot());
         WorldStateData state = state(player.getServer());
@@ -199,8 +222,49 @@ public final class WorldSystem {
         state.tile(tileId).ifPresent(tile -> WorldNetwork.sendActiveChunkGroup(player, chunkGroupShape(state, tile)));
     }
 
+    private static boolean leavesLockedRegion(ServerPlayer player, String destinationTileId) {
+        if (player.isCreative() || destinationTileId == null || destinationTileId.isEmpty()) return false;
+        WorldStateData state = state(player.getServer());
+        return state.tile(state.playerTile(player.getUUID())).flatMap(current -> state.region(current.regionId())
+                .filter(net.exmo.exworld.world.model.Region::cannotLeave)
+                .flatMap(region -> state.tile(destinationTileId)
+                        .map(destination -> !destination.regionId().equals(current.regionId()))))
+                .orElse(false);
+    }
+
+    private static int standableY(ServerLevel level, int x, int z) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, level.getMaxBuildHeight() - 2, z);
+        while (pos.getY() > level.getMinBuildHeight()) {
+            if (!level.getBlockState(pos).isAir() && level.getBlockState(pos.above()).isAir()) return pos.getY() + 1;
+            pos.move(Direction.DOWN);
+        }
+        return Math.max(level.getMinBuildHeight() + 1, 80);
+    }
+
+    private static boolean canEditGroups(ServerPlayer player) {
+        boolean admin = player.isCreative() || player.getServer().getPlayerList().isOp(player.getGameProfile());
+        if (Config.decryptionMode) return admin;
+        return Config.allowClientGroupEditing || admin;
+    }
+
+    private static void clampInside(ServerPlayer player, WorldStateData state, WorldTile tile, String message) {
+        double half = WorldDimensions.groupBlocks(state.groupChunks()) / 2.0 - 0.8;
+        double x = Math.max(tile.worldX() - half, Math.min(tile.worldX() + half, player.getX()));
+        double z = Math.max(tile.worldZ() - half, Math.min(tile.worldZ() + half, player.getZ()));
+        player.teleportTo(x, player.getY(), z);
+        player.displayClientMessage(Component.translatable(message), true);
+    }
+
+    @SubscribeEvent
+    public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) WorldNetwork.sendDecryptionMode(player, Config.decryptionMode);
+    }
+
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        if (Config.consumeDecryptionSync()) {
+            event.getServer().getPlayerList().getPlayers().forEach(player -> WorldNetwork.sendDecryptionMode(player, Config.decryptionMode));
+        }
         WorldStateData state = state(event.getServer());
         if (event.hasTime() && state.pregenerationEnabled()) PRE_GENERATOR.tick(event.getServer().overworld(), state);
     }
@@ -272,6 +336,11 @@ public final class WorldSystem {
             WorldTile entered = current.get();
             String previousGroup = state.tile(previous).map(WorldTile::regionId).orElse("");
             String enteredGroup = entered.regionId();
+            if (!previousGroup.isEmpty() && !previousGroup.equals(enteredGroup)
+                    && state.region(previousGroup).map(net.exmo.exworld.world.model.Region::cannotLeave).orElse(false)) {
+                state.tile(previous).ifPresent(tile -> clampInside(player, state, tile, "message.exworld.region_locked"));
+                return;
+            }
             state.setPlayerTile(player.getUUID(), current.get().id());
             if (ChunkGroupTransition.shouldSynchronize(player.tickCount <= 5, previousGroup, enteredGroup)) {
                 WorldNetwork.sendActiveChunkGroup(player, chunkGroupShape(state, entered));

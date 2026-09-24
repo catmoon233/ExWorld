@@ -1,0 +1,25 @@
+{
+  "parent": "irons_artifice:blackpowder_heart",
+  "criteria": {
+    "arms": {
+      "trigger": "irons_artifice:shot_gun"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.irons_artifice.arms.description"
+    },
+    "icon": {
+      "item": "irons_artifice:flintlock"
+    },
+    "title": {
+      "translate": "advancements.irons_artifice.arms.title"
+    }
+  },
+  "requirements": [
+    [
+      "arms"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

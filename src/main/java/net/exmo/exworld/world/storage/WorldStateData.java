@@ -70,7 +70,7 @@ public final class WorldStateData extends SavedData {
     public List<MapRegion> regionInfos(Set<String> regionIds) { return regions.values().stream()
             .filter(region -> regionIds.contains(region.id()))
             .map(region -> new MapRegion(region.id(), region.name(), region.icon(), region.site(), region.resources(),
-                    region.configured())).toList(); }
+                    region.configured(), region.cannotLeave())).toList(); }
     public Optional<WorldTile> tile(String id) { return Optional.ofNullable(tiles.get(id)); }
     /** Materializes one previously unseen world cell as an unconfigured singleton group. */
     public Optional<WorldTile> ensureTile(int mapX, int mapZ) {
@@ -200,7 +200,8 @@ public final class WorldStateData extends SavedData {
             String detachedId = detachedRegionId(regionId, replacementIds);
             Region source = old == null ? new Region(regionId, List.of(), regionId, 0L) : old;
             regions.put(detachedId, new Region(detachedId, outside.stream().map(WorldTile::id).toList(), source.name(),
-                    source.storySeed(), source.icon(), source.site(), source.resources(), source.configured()));
+                    source.storySeed(), source.icon(), source.site(), source.resources(), source.configured(),
+                    source.cannotLeave()));
             for (WorldTile tile : outside) tiles.put(tile.id(), withRegion(tile, detachedId));
         }
         applied.tiles().forEach(tile -> tiles.put(tile.id(), tile));

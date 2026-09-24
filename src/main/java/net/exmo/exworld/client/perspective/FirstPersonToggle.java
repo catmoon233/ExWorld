@@ -39,6 +39,46 @@ public final class FirstPersonToggle {
 
     public static void toggle() {
         Minecraft minecraft = Minecraft.getInstance();
+        if (net.exmo.exworld.Config.decryptionMode) {
+            if (minecraft.player == null || !minecraft.player.isCreative()) {
+                if (minecraft.player != null) {
+                    minecraft.player.displayClientMessage(Component.translatable("message.exworld.perspective_locked"), true);
+                }
+                return;
+            }
+            creativeGodView = firstPerson;
+        }
+        toggleInternal();
+    }
+
+    /** Decryption mode keeps non-creative players, and creative players who have not opted in, out of the god view. */
+    public static boolean blocksDungeonView() {
+        return net.exmo.exworld.Config.decryptionMode && !creativeGodViewAllowed();
+    }
+
+    public static void enforceDecryption() {
+        if (!net.exmo.exworld.Config.decryptionMode) {
+            creativeGodView = false;
+            return;
+        }
+        if (creativeGodViewAllowed()) return;
+        creativeGodView = false;
+        firstPerson = true;
+        transitioning = false;
+        DungeonPerspective.setOverride(OWNER, CameraProfile.VANILLA);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+    }
+
+    private static boolean creativeGodViewAllowed() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return creativeGodView && minecraft.player != null && minecraft.player.isCreative();
+    }
+
+    private static boolean creativeGodView;
+
+    private static void toggleInternal() {
+        Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
         if (minecraft.player.isSpectator() || minecraft.player.isDeadOrDying()) return;
         if (BattleClient.active()) return; // only outside combat

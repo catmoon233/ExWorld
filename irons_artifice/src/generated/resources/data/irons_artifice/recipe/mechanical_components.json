@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "tag": "c:storage_blocks/iron"
+    },
+    "C": {
+      "item": "minecraft:iron_chain"
+    },
+    "M": {
+      "item": "irons_artifice:simple_mechanical_components"
+    },
+    "N": {
+      "tag": "c:nuggets/iron"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    "BCR",
+    "CMC",
+    "RCN"
+  ],
+  "result": {
+    "item": "irons_artifice:mechanical_components",
+    "count": 1
+  }
+}

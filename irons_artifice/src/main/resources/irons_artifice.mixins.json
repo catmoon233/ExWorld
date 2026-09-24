@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "io.redspace.irons_artifice.mixin",
+  "client": [
+    "AbstractClientPlayerMixin",
+    "DrownedModelMixin",
+    "GuiCrosshairMixin",
+    "ItemInHandRendererMixin",
+    "MinecraftMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "AbstractSkeletonMixin",
+    "DrownedMixin",
+    "IllagerPatrolMixin",
+    "MobAccessor"
+  ]
+}

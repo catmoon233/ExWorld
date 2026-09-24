@@ -7,6 +7,7 @@ import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.damage.SpellDamageSource;
 import net.exmo.exworld.Exworld;
+import net.exmo.exworld.Config;
 import net.exmo.exworld.content.ExWorldContent;
 import net.exmo.exworld.battle.api.*;
 import net.exmo.exworld.battle.attribute.BattleAttributes;
@@ -286,6 +287,7 @@ public final class BattleSystem {
         var pack = net.exmo.exworld.inventory.PlayerBackpack.of(player); BattleNetwork.sendEquipment(player, net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(0)), net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(1)));
     }
     public static void cardCollectionAction(ServerPlayer player, CardCollectionActionPayload payload) {
+        if (Config.decryptionMode) return;
         if (isParticipating(player.getUUID()) && payload.action() != CardCollectionActionPayload.Action.REQUEST) return;
         PlayerCardCollection collection = PLAYER_CARDS.collection(player.getServer(), player.getUUID()); boolean changed = false;
         switch (payload.action()) {
@@ -466,13 +468,13 @@ public final class BattleSystem {
                 .then(Commands.literal("escape").executes(context -> submitEscape(context.getSource().getPlayerOrException()))));
         event.getDispatcher().register(Commands.literal("party")
                 .then(Commands.literal("invite").then(Commands.argument("player", GameProfileArgument.gameProfile())
-                        .executes(context -> partyInvite(context.getSource().getPlayerOrException(), GameProfileArgument.getGameProfiles(context, "player").iterator().next().getId()))))
-                .then(Commands.literal("accept").executes(context -> partyAccept(context.getSource().getPlayerOrException())))
-                .then(Commands.literal("decline").executes(context -> partyDecline(context.getSource().getPlayerOrException())))
-                .then(Commands.literal("leave").executes(context -> partyLeave(context.getSource().getPlayerOrException())))
+                        .executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyInvite(context.getSource().getPlayerOrException(), GameProfileArgument.getGameProfiles(context, "player").iterator().next().getId()))))
+                .then(Commands.literal("accept").executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyAccept(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("decline").executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyDecline(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("leave").executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyLeave(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("kick").then(Commands.argument("player", GameProfileArgument.gameProfile())
-                        .executes(context -> partyKick(context.getSource().getPlayerOrException(), GameProfileArgument.getGameProfiles(context, "player").iterator().next().getId()))))
-                .then(Commands.literal("list").executes(context -> partyList(context.getSource().getPlayerOrException()))));
+                        .executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyKick(context.getSource().getPlayerOrException(), GameProfileArgument.getGameProfiles(context, "player").iterator().next().getId()))))
+                .then(Commands.literal("list").executes(context -> partyDisabled(context.getSource().getPlayerOrException()) ? 0 : partyList(context.getSource().getPlayerOrException()))));
         event.getDispatcher().register(Commands.literal("fight").requires(source -> source.hasPermission(2))
                 .then(Commands.literal("debug")
                         .then(Commands.literal("on").executes(context -> setFightDebug(context.getSource().getPlayerOrException(), true)))
@@ -542,7 +544,8 @@ public final class BattleSystem {
     @SubscribeEvent public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             var pack = net.exmo.exworld.inventory.PlayerBackpack.of(player); BattleNetwork.sendEquipment(player, net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(0)), net.exmo.exworld.inventory.ItemStackOps.id(pack.weapon(1)));
-            syncParty(player);
+            if (Config.decryptionMode) BattleNetwork.sendParty(player, new PartySnapshot(List.of()));
+            else syncParty(player);
             DungeonSystem.onPlayerLogin(player);
             Optional<BattleSnapshot> snapshot=snapshotFor(player.getUUID());
             if(snapshot.isPresent()) {
@@ -563,6 +566,11 @@ public final class BattleSystem {
         });
     }
 
+    private static boolean partyDisabled(ServerPlayer player) {
+        if (!Config.decryptionMode) return false;
+        player.sendSystemMessage(Component.translatable("party.exworld.disabled"));
+        return true;
+    }
     private static int partyInvite(ServerPlayer inviter, UUID targetId) {
         ServerPlayer target=inviter.getServer().getPlayerList().getPlayer(targetId);if(target==null){inviter.sendSystemMessage(Component.translatable("party.exworld.offline"));return 0;}
         var result=PARTIES.invite(inviter.getUUID(),inviter.getGameProfile().getName(),target.getUUID(),target.getGameProfile().getName(),inviter.getServer().getTickCount());

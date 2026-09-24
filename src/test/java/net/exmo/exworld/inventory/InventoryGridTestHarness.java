@@ -30,6 +30,17 @@ public final class InventoryGridTestHarness {
         if (locked.findOrigin(ItemFootprint.of(9, 4)) >= 0) {
             throw new AssertionError("4-row item cannot fit in 3 unlocked rows");
         }
+        if (grid.resolveOrigin(8, ItemFootprint.of(2, 1), -1) != 7) {
+            throw new AssertionError("2x1 on the right edge should anchor on the cell to the left");
+        }
+        grid.place(0, ItemFootprint.UNIT, "block");
+        if (grid.resolveOrigin(0, ItemFootprint.of(2, 1), -1) != 9) {
+            throw new AssertionError("blocked 2x1 should snap to the adjacent row");
+        }
+        if (grid.resolveOrigin(8, ItemFootprint.of(3, 3), -1) >= 0 && grid.resolveOrigin(0, ItemFootprint.of(9, 7), -1) >= 0) {
+            throw new AssertionError("oversized footprints must not invent a cell");
+        }
+
         System.out.println("Inventory grid tests passed");
     }
 }

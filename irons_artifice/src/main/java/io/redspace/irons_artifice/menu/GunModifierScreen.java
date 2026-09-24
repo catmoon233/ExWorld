@@ -1,0 +1,71 @@
+package io.redspace.irons_artifice.menu;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import io.redspace.irons_artifice.IronsArtifice;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+
+import static io.redspace.irons_artifice.menu.GunModifierMenu.SLOT_SIZE;
+
+public class GunModifierScreen extends AbstractContainerScreen<GunModifierMenu> {
+    private static final ResourceLocation BG_TEXTURE = IronsArtifice.id("textures/gui/gun_modifier_screen.png");
+    private static final ResourceLocation SLOT_SPRITE = IronsArtifice.id("modifier_screen/slot");
+    private static final float PREVIEW_SCALE = 16.0F * 3.0F;
+
+    public GunModifierScreen(GunModifierMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, menu.gunstack.getHoverName().copy().setStyle(Style.EMPTY.withColor(ChatFormatting.WHITE).withUnderlined(true)));
+        this.imageWidth = 176;
+        this.imageHeight = 183;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        int margin = (SLOT_SIZE - 16) / 2;
+        for (var slot : menu.getModifierSlots()) {
+            this.addRenderableOnly((graphics, mx, my, a) ->
+                    graphics.blitSprite(SLOT_SPRITE, leftPos + slot.x - margin, topPos + slot.y - margin, SLOT_SIZE, SLOT_SIZE)
+            );
+        }
+    }
+
+    @Override
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        int xo = (this.width - this.imageWidth) / 2;
+        int yo = (this.height - this.imageHeight) / 2;
+        graphics.blit(BG_TEXTURE, xo, yo, 0.0F, 0.0F, this.imageWidth, this.imageHeight, 256, 256);
+        this.renderGunPreview(graphics);
+    }
+
+    /**
+     * PORT-BLOCKED: 1.21.1 has no picture-in-picture item preview. Falls back to {@link GuiGraphics#renderItem}.
+     */
+    private void renderGunPreview(GuiGraphics graphics) {
+        ItemStack gun = this.menu.gunstack;
+        if (gun.isEmpty() || Minecraft.getInstance().player == null) {
+            return;
+        }
+        float itemX = this.width / 2.0F;
+        float itemY = this.topPos + 93 - 24 - PREVIEW_SCALE * .6f;
+        float yRot = 15 + Mth.sin(Minecraft.getInstance().player.tickCount * Mth.DEG_TO_RAD * 2) * 5;
+        graphics.enableScissor(this.leftPos, this.topPos, this.leftPos + this.imageWidth, this.topPos + this.imageHeight);
+        PoseStack pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(itemX, itemY, 100);
+        float scale = PREVIEW_SCALE / 16.0F;
+        pose.scale(scale, scale, scale);
+        pose.mulPose(Axis.YP.rotationDegrees(yRot));
+        graphics.renderItem(gun, -8, -8);
+        pose.popPose();
+        graphics.disableScissor();
+    }
+}

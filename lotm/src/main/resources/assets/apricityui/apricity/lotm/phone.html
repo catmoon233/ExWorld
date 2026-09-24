@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="aui-viewport" content="mode=fixed,width=180,height=360,scale=gui,user-scalable=false">
+<meta name="aui-mouse-events" content="intercept">
+<title>微信</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body, .phone, .screen { width: 180px; height: 360px; margin: 0; padding: 0; }
+  body { background: transparent; color: #191919; font-size: 8px; line-height: 8px; user-select: none; }
+  button, input, textarea, label { font-size: 8px; line-height: 8px; font-family: inherit; }
+  html, body, .phone, .screen, .pages, .phone-page, .bar, .nav, .wxbar, .dock, .app, button, label { user-select: none; }
+  input, textarea, .bubble, .card { user-select: text; }
+  button, label.btn, label.unlock {
+    display: block; border: 0; margin: 0; padding: 0; border-radius: 4px;
+    background: #FFFFFF; color: #191919; text-align: center; line-height: 18px; height: 18px; cursor: pointer;
+  }
+  .screen[data-theme="dark"] button,
+  .screen[data-theme="dark"] label.btn { background: #2C2C2C; color: #D9D9D9; }
+  .screen[data-theme="dark"] button.icon,
+  .screen[data-theme="dark"] button.tool { background: transparent; color: #D9D9D9; }
+  .go, label.unlock, .send,
+  .screen[data-theme="dark"] .go,
+  .screen[data-theme="dark"] label.unlock,
+  .screen[data-theme="dark"] .send { background: #07C160; color: #FFFFFF; }
+  label.shoot {
+    display: block; width: 164px; height: 22px; margin: 0; padding: 0; border: 1px solid #191919; border-radius: 4px;
+    background: #07C160; color: #191919; text-align: center; line-height: 22px;
+  }
+  label.shoot.is-off { background: #EDEDED; color: #9E9E9E; border-color: #9E9E9E; pointer-events: none; }
+  .screen[data-theme="dark"] label.shoot.is-off { background: #2C2C2C; color: #8C8C8C; border-color: #8C8C8C; }
+  .note.warn, .screen[data-theme="dark"] .note.warn { color: #FA5151; }
+  #to-lock { width: 164px; margin: 0 0 8px; }
+  .phone-toggle { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .screen { display: flex; flex-direction: column; overflow: hidden; position: relative; background: #EDEDED; color: #191919; }
+  .screen[data-theme="dark"] { background: #111111; color: #D9D9D9; }
+  .bar { height: 12px; flex: 0 0 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #EDEDED; color: #B2B2B2; }
+  .screen[data-theme="dark"] .bar { background: #1E1E1E; color: #7A7A7A; }
+  .off { display: none; }
+  .wx-notice { display: none; pointer-events: none; margin: 4px 8px 0; padding: 5px; background: #FFFFFF; color: #191919; border-radius: 4px; line-height: 10px; }
+  .wx-notice.on { display: block; }
+  .screen[data-theme="dark"] .wx-notice { background: #2C2C2C; color: #D9D9D9; }
+  .pages { flex: 1; min-height: 0; overflow: hidden; }
+  .phone-page { display: none; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; }
+  #page-lock:checked ~ .phone .lock,
+  #page-home:checked ~ .phone .home,
+  #page-wechat:checked ~ .phone .wechat,
+  #page-chat:checked ~ .phone .chat,
+  #page-sms:checked ~ .phone .sms,
+  #page-pay:checked ~ .phone .pay,
+  #page-camera:checked ~ .phone .camera,
+  #page-dial:checked ~ .phone .dial,
+  #page-wifi:checked ~ .phone .wifi,
+  #page-editor:checked ~ .phone .editor,
+  #page-bill:checked ~ .phone .bill { display: flex; }
+  .nav { height: 24px; flex: 0 0 24px; display: flex; align-items: center; padding: 0 4px; background: #EDEDED; color: #191919; border-bottom: 1px solid #D9D9D9; }
+  .screen[data-theme="dark"] .nav { background: #1E1E1E; color: #D9D9D9; border-bottom-color: #2E2E2E; }
+  .nav h1 { flex: 1; min-width: 0; margin: 0; text-align: center; font-size: 8px; font-weight: 400; line-height: 16px; color: #191919; }
+  .screen[data-theme="dark"] .nav h1 { color: #D9D9D9; }
+  .icon { width: 24px; height: 16px; flex: 0 0 24px; display: block; line-height: 16px; text-align: center; color: #191919; background: transparent; }
+  .screen[data-theme="dark"] .icon { color: #D9D9D9; background: transparent; }
+  .nav .t { display: none; }
+  #tab-chats:checked ~ .phone .t-chats,
+  #tab-book:checked ~ .phone .t-book,
+  #tab-find:checked ~ .phone .t-find,
+  #tab-me:checked ~ .phone .t-me { display: block; }
+  .nav-plus { display: none; width: 24px; height: 16px; line-height: 16px; background: transparent; }
+  .nav-slot { display: block; width: 24px; height: 16px; }
+  #tab-chats:checked ~ .phone .nav-plus { display: block; }
+  #tab-chats:checked ~ .phone .nav-slot { display: none; }
+  .search, #wx-search {
+    display: block; width: 164px; height: 18px; margin: 4px 8px; border: 0; border-radius: 6px;
+    background: #FFFFFF; color: #191919; padding: 0 5px; font-size: 8px; line-height: 18px;
+  }
+  .screen[data-theme="dark"] .search,
+  .screen[data-theme="dark"] #wx-search { background: #2C2C2C; color: #D9D9D9; }
+  input::placeholder, textarea::placeholder { color: #9E9E9E; }
+  .screen[data-theme="dark"] input::placeholder,
+  .screen[data-theme="dark"] textarea::placeholder { color: #8C8C8C; }
+  .wx-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .pane { display: none; min-height: 0; }
+  #tab-chats:checked ~ .phone .pane-chats { display: flex; flex: 1; flex-direction: column; }
+  #tab-book:checked ~ .phone .pane-book,
+  #tab-find:checked ~ .phone .pane-find,
+  #tab-me:checked ~ .phone .pane-me { display: block; flex: 1; overflow: auto; scrollbar-width: none; padding: 4px 8px; }
+  .list, .thread, .pad { flex: 1; min-height: 0; overflow: auto; scrollbar-width: none; }
+  .item {
+    display: flex; align-items: center; width: 100%; height: 34px; margin: 0; padding: 0 8px;
+    border: 0; border-bottom: 1px solid #D9D9D9; border-radius: 0; background: transparent; color: #191919; text-align: left;
+  }
+  .item:last-child { border-bottom: 0; }
+  .screen[data-theme="dark"] .item { border-bottom-color: #2E2E2E; background: transparent; color: #D9D9D9; }
+  .avatar { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 4px; display: block; text-align: center; line-height: 22px; font-style: normal; color: #FFFFFF; }
+  .mid { flex: 1; min-width: 0; margin: 0 4px; }
+  .item .name, .item .preview, .item .stamp { position: static; display: block; width: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .item .name { color: #191919; line-height: 8px; }
+  .item .preview { margin-top: 4px; color: #9E9E9E; line-height: 8px; }
+  .side { width: 32px; flex: 0 0 32px; text-align: right; }
+  .item .stamp { color: #B2B2B2; line-height: 8px; }
+  .screen[data-theme="dark"] .item .name { color: #D9D9D9; }
+  .screen[data-theme="dark"] .item .preview { color: #8C8C8C; }
+  .screen[data-theme="dark"] .item .stamp { color: #7A7A7A; }
+  .dot { width: 8px; height: 8px; margin: 4px 0 0 auto; border-radius: 8px; background: #FA5151; display: block; }
+  .av-a { background: #07C160; color: #FFFFFF; }
+  .av-b { background: #191919; color: #FFFFFF; }
+  .av-me { background: #95EC69; color: #191919; }
+  .screen[data-theme="dark"] .av-b { background: #2C2C2C; color: #D9D9D9; }
+  .screen[data-theme="dark"] .av-me { background: #3EB575; color: #191919; }
+  .split { height: 1px; flex: 0 0 1px; background: #D9D9D9; }
+  .screen[data-theme="dark"] .split { background: #2E2E2E; }
+  .wxbar { height: 28px; flex: 0 0 28px; display: flex; background: #F7F7F7; }
+  .screen[data-theme="dark"] .wxbar { background: #1E1E1E; }
+  .wxbar label { width: 45px; height: 28px; display: block; line-height: 28px; text-align: center; color: #7F7F7F; background: transparent; }
+  #tab-chats:checked ~ .phone .seg-chats,
+  #tab-book:checked ~ .phone .seg-book,
+  #tab-find:checked ~ .phone .seg-find,
+  #tab-me:checked ~ .phone .seg-me { color: #07C160; }
+  .msg { display: flex; align-items: flex-start; margin: 4px 8px; }
+  .msg.mine { justify-content: flex-end; }
+  .msg .avatar { flex: 0 0 22px; }
+  .msg.peer .avatar { margin-right: 4px; }
+  .msg.mine .avatar { margin-left: 4px; }
+  .bubble { max-width: 120px; padding: 5px; border-radius: 4px; background: #FFFFFF; color: #191919; font-size: 8px; line-height: 10px; }
+  .msg.mine .bubble { background: #95EC69; color: #191919; }
+  .screen[data-theme="dark"] .msg.peer .bubble { background: #2C2C2C; color: #D9D9D9; }
+  .screen[data-theme="dark"] .msg.mine .bubble { background: #3EB575; color: #191919; }
+  .composer { height: 30px; flex: 0 0 30px; display: flex; align-items: center; gap: 4px; padding: 0 4px; background: #F7F7F7; border-top: 1px solid #D9D9D9; }
+  .screen[data-theme="dark"] .composer { background: #1E1E1E; border-top-color: #2E2E2E; }
+  .composer input { height: 20px; flex: 1; min-width: 0; margin: 0; border: 0; border-radius: 4px; background: #FFFFFF; color: #191919; padding: 0 5px; }
+  .screen[data-theme="dark"] .composer input { background: #2C2C2C; color: #D9D9D9; }
+  .tool { width: 16px; height: 16px; flex: 0 0 16px; line-height: 16px; background: transparent; color: #191919; }
+  .screen[data-theme="dark"] .tool { background: transparent; color: #D9D9D9; }
+  .send { display: none; width: 32px; height: 20px; line-height: 20px; flex: 0 0 32px; background: #07C160; color: #FFFFFF; }
+  .composer.has-text .send { display: block; }
+  .composer.has-text #tool-plus { display: none; }
+  .menu, .tools { display: none; background: #FFFFFF; border-bottom: 1px solid #D9D9D9; }
+  .menu.on, .tools.on { display: block; }
+  .screen[data-theme="dark"] .menu,
+  .screen[data-theme="dark"] .tools { background: #2C2C2C; border-bottom-color: #2E2E2E; }
+  .menu { padding: 4px 8px; }
+  .menu button, .tools button { width: 100%; margin: 0 0 4px; }
+  .tools { padding: 4px 8px; border-top: 1px solid #D9D9D9; }
+  .screen[data-theme="dark"] .tools { border-top-color: #2E2E2E; }
+  .field { margin: 0 0 6px; }
+  .lbl { display: block; height: 10px; margin: 0 0 2px; color: #9E9E9E; line-height: 10px; }
+  .screen[data-theme="dark"] .lbl { color: #8C8C8C; }
+  .pad input, .pad textarea, .pane input, .pane textarea, .tools input, .lock-pass-box input {
+    display: block; width: 164px; height: 18px; margin: 0; border: 0; border-radius: 4px;
+    background: #FFFFFF; color: #191919; padding: 0 5px; font-size: 8px;
+  }
+  .pad textarea, .pane textarea { height: 36px; padding: 4px 5px; }
+  .screen[data-theme="dark"] .pad input,
+  .screen[data-theme="dark"] .pad textarea,
+  .row .field { flex: 1; min-width: 0; margin: 0; }
+  .row .field input, .row input { width: 100%; }
+  .screen[data-theme="dark"] .pane input,
+  .screen[data-theme="dark"] .pane textarea,
+  .screen[data-theme="dark"] .tools input,
+  .screen[data-theme="dark"] .lock-pass-box input { background: #2C2C2C; color: #D9D9D9; }
+  .row { display: flex; gap: 4px; margin: 0 0 4px; }
+  .row input, .row button, .row label.btn { flex: 1; min-width: 0; width: auto; margin: 0; }
+  .pad { padding: 8px; }
+  p, .note { margin: 0 0 6px; color: #9E9E9E; font-size: 8px; line-height: 10px; }
+  .screen[data-theme="dark"] p,
+  .screen[data-theme="dark"] .note { color: #8C8C8C; }
+  .card { margin: 0 0 6px; padding: 5px; background: #FFFFFF; color: #191919; line-height: 10px; white-space: pre-line; border-radius: 4px; }
+  .screen[data-theme="dark"] .card { background: #2C2C2C; color: #D9D9D9; }
+  #mods { color: #191919; }
+  .screen[data-theme="dark"] #mods { color: #D9D9D9; }
+  .screen[data-theme="light"] #theme-light,
+  .screen[data-theme="dark"] #theme-dark { color: #07C160; }
+  .lock { align-items: center; color: #191919; }
+  .screen[data-theme="dark"] .lock { color: #D9D9D9; }
+  .lock-time, .home-time { margin-top: 28px; font-size: 24px; line-height: 24px; color: #191919; text-align: center; }
+  .home-time { margin-top: 12px; }
+  .screen[data-theme="dark"] .lock-time,
+  .screen[data-theme="dark"] .home-time { color: #D9D9D9; }
+  .lock-weather, .lock-date, .home-weather { margin-top: 8px; color: #9E9E9E; line-height: 8px; text-align: center; }
+  .screen[data-theme="dark"] .lock-weather,
+  .screen[data-theme="dark"] .lock-date,
+  .screen[data-theme="dark"] .home-weather { color: #8C8C8C; }
+  .lock-pass-box { display: none; width: 164px; margin-top: 16px; }
+  .lock-pass-box.on { display: block; }
+  .lock-err { min-height: 10px; margin-top: 4px; color: #FA5151; line-height: 10px; text-align: center; }
+  .lock-gap { flex: 1 1 auto; width: 100%; min-height: 8px; }
+  .unlock { width: 164px; height: 22px; margin: 0 0 16px; line-height: 22px; border-radius: 4px; }
+  .apps { display: grid; grid-template-columns: repeat(4, 45px); justify-content: center; gap: 12px 0; padding-top: 16px; }
+  .app { display: block; width: 45px; height: auto; border: 0; background: transparent; color: #191919; text-align: center; line-height: 8px; }
+  .screen[data-theme="dark"] .app { color: #D9D9D9; background: transparent; }
+  .app i, .dock i { width: 22px; height: 22px; margin: 0 auto 2px; display: block; border-radius: 4px; color: #FFFFFF; font-style: normal; line-height: 22px; text-align: center; }
+  .app span, .dock span { display: block; line-height: 8px; }
+  .i-wx { background: #07C160; }
+  .i-ink { background: #191919; }
+  .screen[data-theme="dark"] .i-ink { background: #2C2C2C; color: #D9D9D9; }
+  .dock { display: none; height: 36px; flex: 0 0 36px; background: #EDEDED; border-top: 1px solid #D9D9D9; }
+  #page-home:checked ~ .phone .dock { display: flex; }
+  .screen[data-theme="dark"] .dock { background: #111111; border-top-color: #2E2E2E; }
+  .dock label { flex: 1; height: 36px; text-align: center; color: #191919; background: transparent; line-height: 8px; }
+  .screen[data-theme="dark"] .dock label { color: #D9D9D9; background: transparent; }
+  .dock i { width: 16px; height: 16px; margin: 4px auto 2px; line-height: 16px; color: #191919; background: transparent; }
+  .screen[data-theme="dark"] .dock i { color: #D9D9D9; }
+</style>
+</head>
+<body>
+<input class="phone-toggle" type="radio" name="phone-page" id="page-lock" checked>
+<input class="phone-toggle" type="radio" name="phone-page" id="page-home">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-wechat">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-chat">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-sms">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-pay">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-camera">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-dial">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-wifi">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-editor">
+<input class="phone-toggle" type="radio" name="phone-page" id="page-bill">
+<input class="phone-toggle" type="radio" name="wx-tab" id="tab-chats" checked>
+<input class="phone-toggle" type="radio" name="wx-tab" id="tab-book">
+<input class="phone-toggle" type="radio" name="wx-tab" id="tab-find">
+<input class="phone-toggle" type="radio" name="wx-tab" id="tab-me">
+<div class="phone">
+  <div class="screen" id="screen" data-theme="light">
+    <div class="bar"><span id="clock">00:00</span><span id="battery">100%</span></div>
+    <div id="status" class="off">等待连接…</div>
+    <div id="theme-name" class="off">light</div>
+    <div id="notice" class="wx-notice"></div>
+    <div id="chats" class="off">还没有消息</div>
+    <div class="pages">
+      <section class="phone-page lock">
+        <div class="lock-time" id="lock-time">00:00</div>
+        <div class="lock-weather" id="lock-weather">晴 26°</div>
+        <div class="lock-date" id="lock-date">1月1日 周一</div>
+        <div id="lock-pass-box" class="lock-pass-box">
+          <div class="lbl">锁屏密码</div>
+          <input id="lock-pass" type="password" placeholder="输入后点进入">
+          <div id="lock-err" class="lock-err"></div>
+        </div>
+        <div class="lock-gap"></div>
+        <label id="unlock" class="unlock" for="page-home">进入</label>
+      </section>
+      <section class="phone-page home">
+        <div class="home-time" id="home-time">00:00</div>
+        <div class="home-weather" id="home-weather">晴 26°</div>
+        <div class="apps">
+          <label class="app" for="page-wechat"><i class="i-wx">微</i><span>微信</span></label>
+          <label class="app" for="page-camera"><i class="i-ink">拍</i><span>拍照</span></label>
+          <label class="app" for="page-editor"><i class="i-ink">名</i><span>名片</span></label>
+          <label class="app" for="page-bill"><i class="i-ink">费</i><span>话费</span></label>
+          <label class="app" id="open-settings" for="page-wifi"><i class="i-ink">设</i><span>设置</span></label>
+        </div>
+      </section>
+      <section class="phone-page wechat">
+        <div class="nav">
+          <label class="icon" for="page-home">返回</label>
+          <h1 class="t t-chats">微信</h1>
+          <h1 class="t t-book">通讯录</h1>
+          <h1 class="t t-find">发现</h1>
+          <h1 class="t t-me">我</h1>
+          <button id="nav-plus" class="icon nav-plus" type="button">＋</button>
+          <span class="icon nav-slot"></span>
+        </div>
+        <div id="plus-menu" class="menu">
+          <button id="menu-friend" type="button">添加好友</button>
+          <button id="menu-group" type="button">发起群聊</button>
+        </div>
+        <div class="wx-body">
+          <div class="pane pane-chats">
+            <input id="wx-search" class="search" placeholder="搜索">
+            <div class="list" id="chat-list">
+              <label class="item" for="page-chat" data-name="张三">
+                <i class="avatar av-a">张</i>
+                <span class="mid"><span class="name">张三</span><span class="preview">在吗？</span></span>
+                <span class="side"><span class="stamp">12:30</span><i class="dot"></i></span>
+              </label>
+              <label class="item" for="page-chat" data-name="文件传输助手">
+                <i class="avatar av-b">文</i>
+                <span class="mid"><span class="name">文件传输助手</span><span class="preview">[文件] report.pdf</span></span>
+                <span class="side"><span class="stamp">昨天</span></span>
+              </label>
+            </div>
+          </div>
+          <div class="pane pane-book">
+            <div class="field"><div class="lbl">添加好友</div><input id="friend-name" placeholder="微信名"></div>
+            <button class="go" id="friend" type="button">添加</button>
+            <div class="field"><div class="lbl">我的微信名</div><input id="rename" placeholder="新的微信名"></div>
+            <button id="rename-go" type="button">保存</button>
+            <div class="field"><div class="lbl">群名</div><input id="group-name" placeholder="群名"></div>
+            <div class="field"><div class="lbl">成员</div><input id="group-members" placeholder="好友微信名，逗号分隔"></div>
+            <button class="go" id="group-go" type="button">新建群聊</button>
+          </div>
+          <div class="pane pane-find">
+            <div class="lbl">朋友圈</div>
+            <textarea id="moment-text" placeholder="这一刻的想法"></textarea>
+            <button class="go" id="moment" type="button">发朋友圈</button>
+          </div>
+          <div class="pane pane-me">
+            <div class="card" id="mods">SIM 与微信检测中</div>
+            <p id="net-line">未连接 WiFi，且没有可用流量</p>
+            <p id="pass-state">当前无密码</p>
+          </div>
+        </div>
+        <div class="split"></div>
+        <div class="wxbar">
+          <label class="seg-chats" for="tab-chats">微信</label>
+          <label class="seg-book" for="tab-book">通讯录</label>
+          <label class="seg-find" for="tab-find">发现</label>
+          <label class="seg-me" for="tab-me">我</label>
+        </div>
+      </section>
+      <section class="phone-page chat">
+        <div class="nav">
+          <label class="icon" for="page-wechat">返回</label>
+          <h1 id="peer-name">张三</h1>
+          <button id="more" class="icon" type="button">更多</button>
+        </div>
+        <div id="more-menu" class="menu"><button id="more-line" type="button">张三</button></div>
+        <div class="thread" id="chat-thread">
+          <div class="msg peer"><i class="avatar av-a">张</i><div class="bubble">在吗？</div></div>
+          <div class="msg mine"><div class="bubble">在的</div><i class="avatar av-me">我</i></div>
+        </div>
+        <div id="tools" class="tools">
+          <div class="field"><div class="lbl">会话</div><input id="chat-to" value="张三"></div>
+          <div class="field"><div class="lbl">照片序号</div><input id="photo-slot" placeholder="从 0 开始"></div>
+          <div class="row">
+            <div class="field"><div class="lbl">金额</div><input id="money" placeholder="金额"></div>
+            <div class="field"><div class="lbl">份数</div><input id="shares" value="1"></div>
+          </div>
+          <div class="field"><div class="lbl">领取编号</div><input id="claim-id" placeholder="如 p1"></div>
+          <div class="row">
+            <button id="photo-go" type="button">发图</button>
+            <button id="transfer-go" type="button">转账</button>
+            <button id="redpack-go" type="button">红包</button>
+          </div>
+          <div class="row">
+            <button id="voice-go" type="button">群语音</button>
+            <button id="claim-go" type="button">领取</button>
+          </div>
+        </div>
+        <div class="composer" id="composer">
+          <input id="chat-text" placeholder="输入消息">
+          <button id="tool-plus" class="tool" type="button">＋</button>
+          <button id="send" class="send" type="button">发送</button>
+        </div>
+      </section>
+      <section class="phone-page bill">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>话费</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="card" id="bill-line">话费 0 · 流量 0</div>
+          <div class="field"><div class="lbl">数量</div><input id="bill-amount" placeholder="充值或兑换数量"></div>
+          <div class="row">
+            <button class="go" id="topup" type="button">充值话费</button>
+            <button id="buy-data" type="button">兑换流量</button>
+          </div>
+        </div>
+      </section>
+      <section class="phone-page sms">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>短信</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="card" id="contacts">安装 SIM 后可收发短信</div>
+          <div class="field"><div class="lbl">号码</div><input id="sms-to" placeholder="对方号码"></div>
+          <div class="field"><div class="lbl">内容</div><input id="sms-text" placeholder="短信内容"></div>
+          <button class="go" id="sms-go" type="button">发送</button>
+        </div>
+      </section>
+      <section class="phone-page pay">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>钱包</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="card">金币 <span id="gold">0</span></div>
+          <div class="field"><div class="lbl">收款人</div><input id="pay-to" placeholder="玩家名、微信名或手机号"></div>
+          <div class="field"><div class="lbl">金额</div><input id="pay-amount" placeholder="金额"></div>
+          <button class="go" id="pay-go" type="button">转账</button>
+        </div>
+      </section>
+      <section class="phone-page camera">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>拍照</h1><span class="icon"></span></div>
+        <div class="pad">
+          <p class="note warn" id="camera-hint">正在确认相机，暂不能打开</p>
+          <div id="camera-flag" class="off"></div>
+          <button id="shoot" class="phone-toggle" type="button" disabled>打开相机</button>
+          <label id="shoot-open" class="shoot is-off" disabled>暂不能打开</label>
+        </div>
+      </section>
+      <section class="phone-page dial">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>电话</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="card" id="call-line">未通话</div>
+          <div class="field"><div class="lbl">呼叫对象</div><input id="call-to" placeholder="玩家名或手机号"></div>
+          <div class="row">
+            <button class="go" id="call" type="button">呼叫</button>
+            <button id="hangup" type="button">挂断</button>
+          </div>
+        </div>
+      </section>
+      <section class="phone-page wifi">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>设置</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="lbl">主题</div>
+          <div class="row">
+            <button id="theme-light" type="button">浅色</button>
+            <button id="theme-dark" type="button">深色</button>
+          </div>
+          <div class="field"><div class="lbl">锁屏密码</div><input id="pass-new" type="password" placeholder="新密码"></div>
+          <div class="row">
+            <button id="pass-set" type="button">设置密码</button>
+            <button id="pass-clear" type="button">清除密码</button>
+          </div>
+          <label id="to-lock" class="btn" for="page-lock">锁屏</label>
+          <div class="lbl">WiFi</div>
+          <div class="card" id="wifi-list">范围内没有 WiFi</div>
+          <div class="field"><div class="lbl">名称</div><input id="wifi-name" placeholder="WiFi 名称"></div>
+          <div class="field"><div class="lbl">密码</div><input id="wifi-pass" placeholder="密码"></div>
+          <div class="row">
+            <button class="go" id="wifi-go" type="button">连接</button>
+            <button id="wifi-off" type="button">断开</button>
+          </div>
+        </div>
+      </section>
+      <section class="phone-page editor">
+        <div class="nav"><label class="icon" for="page-home">返回</label><h1>名片</h1><span class="icon"></span></div>
+        <div class="pad">
+          <div class="field"><div class="lbl">NPC id</div><input id="npc-id" placeholder="NPC id"></div>
+          <div class="field"><div class="lbl">手机号</div><input id="npc-number" placeholder="手机号"></div>
+          <div class="field"><div class="lbl">微信名</div><input id="npc-wechat" placeholder="微信名"></div>
+          <div class="field"><div class="lbl">朋友圈</div><textarea id="npc-moment" placeholder="可选"></textarea></div>
+          <button class="go" id="npc-save" type="button">保存</button>
+        </div>
+      </section>
+    </div>
+    <div class="dock">
+      <label for="page-dial"><i>电</i><span>电话</span></label>
+      <label for="page-pay"><i>钱</i><span>钱包</span></label>
+      <label for="page-sms"><i>信</i><span>短信</span></label>
+    </div>
+  </div>
+</div>
+<script>
+  var ready = false;
+  var themeSeen = "";
+  var rawSeen = "";
+  var passed = false;
+  var PASS_KEY = "lotm-phone-pass";
+  var PAGES = ["page-lock", "page-home", "page-wechat", "page-chat", "page-sms", "page-pay", "page-camera", "page-dial", "page-wifi", "page-editor", "page-bill"];
+  var SAMPLES = [
+    { name: "张三", time: "12:30", preview: "在吗？", peer: "张三", unread: true, messages: [{ mine: false, who: "张三", text: "在吗？" }, { mine: true, who: "我", text: "在的" }] },
+    { name: "文件传输助手", time: "昨天", preview: "[文件] report.pdf", peer: "文件传输助手", unread: false, messages: [{ mine: false, who: "文件传输助手", text: "[文件] report.pdf" }] }
+  ];
+  function init() {
+    if (ready) return;
+    if (!document.getElementById("screen")) return;
+    ready = true;
+    var stored = readStore("lotm-phone-theme");
+    if (stored === "dark" || stored === "light") {
+      setText("theme-name", stored);
+      themeSeen = stored;
+      applyTheme(stored);
+    }
+    syncLock();
+    syncCamera();
+    tickClock();
+    bind("theme-light", function () { chooseTheme("light"); });
+    bind("theme-dark", function () { chooseTheme("dark"); });
+    bind("pass-set", setPass);
+    bind("pass-clear", clearPass);
+    bind("to-lock", function () { passed = false; syncLock(); });
+    bind("nav-plus", function () { toggle("plus-menu"); });
+    bind("menu-friend", function () { go("tab-book"); hide("plus-menu"); });
+    bind("menu-group", function () { go("tab-book"); hide("plus-menu"); });
+    bind("tool-plus", function () { toggle("tools"); });
+    bind("more", function () { toggle("more-menu"); });
+    bind("send", function () {
+      setTimeout(function () {
+        var input = document.getElementById("chat-text");
+        if (input) input.value = "";
+        markComposer();
+      }, 80);
+    });
+    var chatText = document.getElementById("chat-text");
+    if (chatText) chatText.addEventListener("input", markComposer);
+    var search = document.getElementById("wx-search");
+    if (search) search.addEventListener("input", filterList);
+    var lockPass = document.getElementById("lock-pass");
+    if (lockPass) lockPass.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") tryUnlock();
+    });
+    syncChats();
+    setInterval(function () { tickClock(); syncTheme(); syncChats(); syncNotice(); syncCamera(); guardLock(); }, 500);
+  }
+  function press(el, fn) {
+    if (!el || !el.addEventListener) return;
+    var busy = false;
+    function once() {
+      if (busy) return;
+      busy = true;
+      setTimeout(function () { busy = false; }, 40);
+      fn();
+    }
+    el.addEventListener("mousedown", once);
+    el.addEventListener("click", once);
+  }
+  function bind(id, fn) {
+    press(document.getElementById(id), fn);
+  }
+  function isOn(id) {
+    var node = document.getElementById(id);
+    if (!node) return false;
+    try { if (node.isChecked && node.isChecked()) return true; } catch (e) {}
+    return !!node.checked;
+  }
+  function setRadio(id, on) {
+    var node = document.getElementById(id);
+    if (!node) return;
+    try { node.setChecked(on); } catch (e) {}
+    try { node.checked = on; } catch (e2) {}
+    try {
+      if (on) node.setAttribute("checked", "checked");
+      else node.removeAttribute("checked");
+    } catch (e3) {}
+  }
+  function go(id) {
+    var tabs = ["tab-chats", "tab-book", "tab-find", "tab-me"];
+    var group = PAGES;
+    var i;
+    for (i = 0; i < tabs.length; i++) if (tabs[i] === id) group = tabs;
+    for (i = 0; i < group.length; i++) if (group[i] !== id) setRadio(group[i], false);
+    setRadio(id, true);
+  }
+  function hide(id) {
+    var el = document.getElementById(id);
+    if (el && el.classList) el.classList.remove("on");
+  }
+  function toggle(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.classList) return;
+    if (el.classList.contains("on")) el.classList.remove("on");
+    else el.classList.add("on");
+  }
+  function setText(id, value) {
+    var node = document.getElementById(id);
+    if (!node) return;
+    if ((node.textContent || "") === value) return;
+    node.textContent = value;
+  }
+  function readStore(key) {
+    try { return localStorage.getItem(key) || ""; } catch (e) { return ""; }
+  }
+  function writeStore(key, value) {
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch (e) {}
+  }
+  function applyTheme(value) {
+    var screen = document.getElementById("screen");
+    if (screen) screen.setAttribute("data-theme", value === "dark" ? "dark" : "light");
+  }
+  function chooseTheme(value) {
+    applyTheme(value);
+    setText("theme-name", value);
+    themeSeen = value;
+    writeStore("lotm-phone-theme", value);
+  }
+  function syncTheme() {
+    var node = document.getElementById("theme-name");
+    var value = node ? trim(node.textContent || "") : "";
+    if (value !== "light" && value !== "dark") return;
+    if (value === themeSeen) return;
+    themeSeen = value;
+    applyTheme(value);
+  }
+  var noticeText = "";
+  var noticeUntil = 0;
+  function syncNotice() {
+    var node = document.getElementById("notice");
+    if (!node || !node.classList) return;
+    var text = trim(node.textContent || "");
+    var now = Date.now();
+    if (!text) {
+      noticeText = "";
+      noticeUntil = 0;
+      node.classList.remove("on");
+      return;
+    }
+    if (text !== noticeText) {
+      noticeText = text;
+      noticeUntil = now + 2500;
+      node.classList.add("on");
+      return;
+    }
+    if (now >= noticeUntil) node.classList.remove("on");
+  }
+  function trim(value) {
+    return String(value || "").replace(/^\s+|\s+$/g, "");
+  }
+  function syncCamera() {
+    var flag = document.getElementById("camera-flag");
+    var raw = flag ? trim(flag.textContent || "") : "";
+    var open = document.getElementById("shoot-open");
+    var hint = document.getElementById("camera-hint");
+    var shoot = document.getElementById("shoot");
+    var on = raw === "1";
+    var label = on ? "打开相机" : "暂不能打开";
+    var note = on ? "打开相机拍摄。拍完后回到微信，在会话工具里填写照片序号再发送。" : (raw === "0" ? "未安装 Exposure，无法打开相机" : "正在确认相机，暂不能打开");
+    if (open) {
+      if ((open.textContent || "") !== label) open.textContent = label;
+      if (open.classList) {
+        if (on) open.classList.remove("is-off");
+        else open.classList.add("is-off");
+      }
+      try {
+        if (on) {
+          open.setAttribute("for", "shoot");
+          open.removeAttribute("disabled");
+        } else {
+          open.removeAttribute("for");
+          open.setAttribute("disabled", "disabled");
+        }
+      } catch (e) {}
+    }
+    if (hint) {
+      if ((hint.textContent || "") !== note) hint.textContent = note;
+      if (hint.classList) {
+        if (on) hint.classList.remove("warn");
+        else hint.classList.add("warn");
+      }
+    }
+    if (shoot) {
+      try {
+        if (on) shoot.removeAttribute("disabled");
+        else shoot.setAttribute("disabled", "disabled");
+      } catch (e2) {}
+    }
+  }
+  function readPass() { return readStore(PASS_KEY); }
+  function syncLock() {
+    var saved = readPass();
+    var box = document.getElementById("lock-pass-box");
+    if (box && box.classList) {
+      if (saved) box.classList.add("on");
+      else box.classList.remove("on");
+    }
+    setText("pass-state", saved ? "已设置密码" : "当前无密码");
+    if (!saved) passed = true;
+  }
+  function setPass() {
+    var input = document.getElementById("pass-new");
+    var value = input ? input.value : "";
+    if (!value) return;
+    writeStore(PASS_KEY, value);
+    if (input) input.value = "";
+    passed = false;
+    syncLock();
+  }
+  function clearPass() {
+    writeStore(PASS_KEY, "");
+    var typed = document.getElementById("lock-pass");
+    if (typed) typed.value = "";
+    passed = true;
+    setText("lock-err", "");
+    syncLock();
+  }
+  function tryUnlock() {
+    var saved = readPass();
+    if (!saved) { passed = true; go("page-home"); return; }
+    var input = document.getElementById("lock-pass");
+    var typed = input && input.value ? input.value : "";
+    if (typed === saved) {
+      passed = true;
+      if (input) input.value = "";
+      setText("lock-err", "");
+      go("page-home");
+    } else {
+      setText("lock-err", typed ? "密码错误" : "请输入密码");
+    }
+  }
+  function guardLock() {
+    var saved = readPass();
+    if (!saved) { passed = true; return; }
+    if (isOn("page-lock")) { passed = false; return; }
+    if (passed) return;
+    var input = document.getElementById("lock-pass");
+    var typed = input && input.value ? input.value : "";
+    if (typed && typed === saved) {
+      passed = true;
+      input.value = "";
+      setText("lock-err", "");
+      return;
+    }
+    setText("lock-err", typed ? "密码错误" : "请输入密码");
+    var box = document.getElementById("lock-pass-box");
+    if (box && box.classList) box.classList.add("on");
+    go("page-lock");
+  }
+  function tickClock() {
+    var now = new Date();
+    var hh = now.getHours();
+    var mm = now.getMinutes();
+    var text = (hh < 10 ? "0" : "") + hh + ":" + (mm < 10 ? "0" : "") + mm;
+    var days = "日一二三四五六";
+    var date = (now.getMonth() + 1) + "月" + now.getDate() + "日 周" + days.charAt(now.getDay());
+    setText("clock", text);
+    setText("lock-time", text);
+    setText("home-time", text);
+    setText("lock-date", date);
+  }
+  function selfName() {
+    var node = document.getElementById("mods");
+    var text = node ? (node.textContent || "") : "";
+    var mark = "微信 ";
+    var at = text.indexOf(mark);
+    if (at < 0) return "";
+    return trim(text.substring(at + mark.length));
+  }
+  function parseSessions(raw) {
+    var lines = String(raw || "").split("\n");
+    var sessions = [];
+    var self = selfName();
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = trim(lines[i]);
+      if (!line || line === "还没有消息" || line.indexOf("照片 #") === 0) continue;
+      if (line.indexOf("群 ") === 0) {
+        var arrow = line.indexOf(" → ");
+        var name = arrow > 2 ? line.substring(2, arrow) : line.substring(2);
+        var id = arrow > 0 ? trim(line.substring(arrow + 3)) : name;
+        sessions.push({ name: name, time: "", preview: id, peer: id, unread: false, messages: [] });
+        continue;
+      }
+      var sep = line.indexOf(" → ");
+      var colon = line.indexOf("：");
+      if (colon < 0) colon = line.indexOf(":");
+      if (sep < 0 || colon < sep) continue;
+      var from = line.substring(0, sep);
+      var to = line.substring(sep + 3, colon);
+      var text = line.substring(colon + 1);
+      var mine = self && from === self;
+      var peer = mine ? to : from;
+      var found = -1;
+      var j;
+      for (j = 0; j < sessions.length; j++) if (sessions[j].peer === peer) found = j;
+      var msg = { mine: mine, who: from, text: text };
+      if (found < 0) sessions.push({ name: peer, time: "刚刚", preview: text, peer: peer, unread: !mine, messages: [msg] });
+      else {
+        sessions[found].preview = text;
+        sessions[found].time = "刚刚";
+        sessions[found].unread = !mine;
+        sessions[found].messages.push(msg);
+      }
+    }
+    return sessions;
+  }
+  function syncChats() {
+    var src = document.getElementById("chats");
+    var raw = src ? (src.textContent || "") : "";
+    if (raw === rawSeen) return;
+    rawSeen = raw;
+    var live = parseSessions(raw);
+    renderList(live.length ? live : SAMPLES);
+  }
+  function renderList(items) {
+    var box = document.getElementById("chat-list");
+    if (!box) return;
+    while (box.firstChild) box.removeChild(box.firstChild);
+    var i;
+    for (i = 0; i < items.length; i++) box.appendChild(sessionItem(items[i]));
+    filterList();
+  }
+  function sessionItem(s) {
+    var row = document.createElement("label");
+    row.className = "item";
+    row.setAttribute("for", "page-chat");
+    row.setAttribute("data-name", s.name);
+    var face = document.createElement("i");
+    face.className = "avatar " + (s.unread ? "av-a" : "av-b");
+    face.textContent = s.name ? s.name.charAt(0) : "";
+    var mid = document.createElement("span");
+    mid.className = "mid";
+    addSpan(mid, "name", s.name);
+    addSpan(mid, "preview", s.preview || "");
+    var side = document.createElement("span");
+    side.className = "side";
+    addSpan(side, "stamp", s.time || "");
+    if (s.unread) {
+      var dot = document.createElement("i");
+      dot.className = "dot";
+      side.appendChild(dot);
+    }
+    row.appendChild(face);
+    row.appendChild(mid);
+    row.appendChild(side);
+    press(row, function () { openChat(s); });
+    return row;
+  }
+  function addSpan(parent, className, text) {
+    var node = document.createElement("span");
+    node.className = className;
+    node.textContent = text || "";
+    parent.appendChild(node);
+  }
+  function filterList() {
+    var search = document.getElementById("wx-search");
+    var text = search && search.value ? search.value : "";
+    var items = document.getElementsByClassName("item");
+    var i;
+    for (i = 0; i < items.length; i++) {
+      var name = items[i].getAttribute("data-name") || "";
+      items[i].style.display = !text || name.indexOf(text) >= 0 ? "flex" : "none";
+    }
+  }
+  function openChat(s) {
+    var title = s.name || "";
+    if (title.indexOf("微信") === 0) title = trim(title.substring(2));
+    setText("peer-name", title);
+    setText("more-line", title);
+    var to = document.getElementById("chat-to");
+    if (to) to.value = s.peer || title;
+    renderThread(s.messages || [], title);
+    go("page-chat");
+  }
+  function renderThread(messages, title) {
+    var box = document.getElementById("chat-thread");
+    if (!box) return;
+    while (box.firstChild) box.removeChild(box.firstChild);
+    var i;
+    for (i = 0; i < messages.length; i++) box.appendChild(bubbleRow(messages[i], title));
+  }
+  function bubbleRow(msg, title) {
+    var row = document.createElement("div");
+    row.className = msg.mine ? "msg mine" : "msg peer";
+    var face = document.createElement("i");
+    face.className = "avatar " + (msg.mine ? "av-me" : "av-a");
+    face.textContent = msg.mine ? "我" : ((msg.who || title || "对").charAt(0));
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = msg.text || "";
+    if (msg.mine) {
+      row.appendChild(bubble);
+      row.appendChild(face);
+    } else {
+      row.appendChild(face);
+      row.appendChild(bubble);
+    }
+    return row;
+  }
+  function markComposer() {
+    var input = document.getElementById("chat-text");
+    var bar = document.getElementById("composer");
+    if (!bar || !input || !bar.classList) return;
+    if (input.value) bar.classList.add("has-text");
+    else bar.classList.remove("has-text");
+  }
+  if (document.addEventListener) document.addEventListener("DOMContentLoaded", init);
+  init();
+</script>
+</body>
+</html>

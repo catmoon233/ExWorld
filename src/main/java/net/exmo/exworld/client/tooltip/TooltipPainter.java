@@ -1,11 +1,18 @@
 package net.exmo.exworld.client.tooltip;
 
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+
 
 /** Draws panel chrome, badges, section headers, glow and animated item icons for the themed tooltip. */
 public final class TooltipPainter {
@@ -111,23 +118,41 @@ public final class TooltipPainter {
         }
     }
 
-    /** Animated icon with a fixed centre: slow Y rotation for equipment, gentle Z tilt otherwise. No bob or scale. */
+    /**
+     * In-place icon. GuiGraphics.renderItem adds a z offset after the caller pose, so a Y spin
+     * turns that offset into a screen orbit. Render the model at the slot centre ourselves.
+     */
     public static void drawAnimatedItem(GuiGraphics graphics, ItemStack stack, int centerX, int centerY,
                                         long timeMs, boolean equipment) {
-        graphics.pose().pushPose();
-        if (equipment) {
-            double spinY = (timeMs % 9000L) / 9000.0 * 360.0;
-            graphics.pose().translate(centerX, centerY, 0);
-            graphics.pose().mulPose(Axis.YP.rotationDegrees((float) spinY));
-        } else {
-            float spinZ = (float) (Math.sin(timeMs * 0.0018) * 3.0);
-            graphics.pose().translate(centerX, centerY, 0);
-            graphics.pose().mulPose(Axis.ZP.rotationDegrees(spinZ));
+        if (stack == null || stack.isEmpty()) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        var renderer = minecraft.getItemRenderer();
+        BakedModel model = renderer.getModel(stack, minecraft.level, minecraft.player, 0);
+        int half = TooltipLayout.SLOT / 2;
+        graphics.enableScissor(centerX - half, centerY - half, centerX + half, centerY + half);
+        var pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(centerX, centerY, 0.0F);
+        if (model.isGui3d()) {
+            float yaw = (timeMs % 8000L) / 8000.0F * 360.0F;
+            pose.mulPose(Axis.YP.rotationDegrees(yaw));
+            pose.mulPose(Axis.XP.rotationDegrees(25.0F));
+        } else if (equipment) {
+            float tilt = (float) (Math.sin(timeMs * 0.0018) * 4.0);
+            pose.mulPose(Axis.ZP.rotationDegrees(tilt));
         }
-        graphics.pose().translate(-8.0f, -8.0f, 0.0f);
-        graphics.renderItem(stack, 0, 0);
-        graphics.pose().popPose();
+        pose.scale(16.0F, -16.0F, 16.0F);
+        boolean flatLight = !model.usesBlockLight();
+        if (flatLight) Lighting.setupForFlatItems();
+        else Lighting.setupFor3DItems();
+        renderer.render(stack, ItemDisplayContext.GUI, false, pose, graphics.bufferSource(),
+                LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, model);
+        graphics.flush();
+        pose.popPose();
+        graphics.disableScissor();
+        if (flatLight) Lighting.setupFor3DItems();
     }
+
 
     private static void drawRect(GuiGraphics graphics, int x, int y, int width, int height, int color) {
         graphics.fill(x, y, x + width, y + 1, color);
