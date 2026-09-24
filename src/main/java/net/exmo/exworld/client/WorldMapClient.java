@@ -49,6 +49,7 @@ public final class WorldMapClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.exworld");
     private static final KeyMapping OPEN_JOURNAL = new KeyMapping("key.exworld.open_quest_journal",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "key.categories.exworld");
+    private static boolean deckKeyHidden;
 
     private WorldMapClient() {}
 
@@ -80,6 +81,11 @@ public final class WorldMapClient {
     private static void registerKeys(RegisterKeyMappingsEvent event) { event.register(OPEN_MAP); event.register(OPEN_CARDS); event.register(TOGGLE_FIRST_PERSON); event.register(OPEN_JOURNAL); }
 
     private static void clientTick(ClientTickEvent.Post event) {
+        if (deckKeyHidden != net.exmo.exworld.Config.decryptionMode) {
+            deckKeyHidden = net.exmo.exworld.Config.decryptionMode;
+            applyDeckKey(deckKeyHidden);
+        }
+        FirstPersonToggle.enforceDecryption();
         DungeonPerspective.tick();
         FirstPersonToggle.tick();
         BattleClient.tick();
@@ -88,10 +94,27 @@ public final class WorldMapClient {
         while (OPEN_MAP.consumeClick()) {
             if (Minecraft.getInstance().player != null) PacketDistributor.sendToServer(new RequestWorldMapPayload());
         }
-        while (OPEN_CARDS.consumeClick()) if (!BattleClient.active()) PacketDistributor.sendToServer(new CardCollectionActionPayload(
-                CardCollectionActionPayload.Action.REQUEST, 0, null, java.util.List.of(), ""));
+        while (OPEN_CARDS.consumeClick()) {
+            if (!net.exmo.exworld.Config.decryptionMode && !BattleClient.active()) PacketDistributor.sendToServer(new CardCollectionActionPayload(
+                    CardCollectionActionPayload.Action.REQUEST, 0, null, java.util.List.of(), ""));
+        }
         while (TOGGLE_FIRST_PERSON.consumeClick()) FirstPersonToggle.toggle();
         while (OPEN_JOURNAL.consumeClick()) if (!BattleClient.active()) QuestClient.open();
+    }
+
+    public static void applyDeckKey(boolean hide) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.options == null) return;
+        KeyMapping[] current = minecraft.options.keyMappings;
+        boolean present = false;
+        for (KeyMapping mapping : current) if (mapping == OPEN_CARDS) present = true;
+        if (hide && present) {
+            minecraft.options.keyMappings = java.util.Arrays.stream(current).filter(mapping -> mapping != OPEN_CARDS).toArray(KeyMapping[]::new);
+        } else if (!hide && !present) {
+            KeyMapping[] next = java.util.Arrays.copyOf(current, current.length + 1);
+            next[current.length] = OPEN_CARDS;
+            minecraft.options.keyMappings = next;
+        }
     }
 
     public static void receive(WorldSnapshot snapshot) {
@@ -107,6 +130,10 @@ public final class WorldMapClient {
     }
 
     private static void onScreenOpening(ScreenEvent.Opening event) {
+        if (net.exmo.exworld.Config.decryptionMode && event.getNewScreen() instanceof net.exmo.exworld.client.battle.screen.CardCollectionScreen) {
+            event.setCanceled(true);
+            return;
+        }
         if (event.getNewScreen() instanceof DeathScreen && !(event.getCurrentScreen() instanceof AnchorMapScreen)) {
             PacketDistributor.sendToServer(new RequestRespawnAnchorsPayload());
         }

@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:empty",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:seeking_powder_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:incendiary_tip_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:frozen_jacket_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:voltaic_core_modifier"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "irons_artifice:loadouts/illificer/main_modifier"
+}

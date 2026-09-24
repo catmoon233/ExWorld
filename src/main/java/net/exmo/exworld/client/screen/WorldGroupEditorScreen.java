@@ -94,7 +94,7 @@ public final class WorldGroupEditorScreen extends Screen {
         for (MapTile tile : snapshot.tiles()) {
             MapRegion region = info.getOrDefault(tile.regionId(), new MapRegion(tile.regionId(), tile.regionId(), ""));
             groups.computeIfAbsent(region.id(), id -> new DraftGroup(id, region.name(), region.icon(), region.site(),
-                    region.resources(), region.configured())).tileIds.add(tile.id());
+                    region.resources(), region.configured(), region.cannotLeave())).tileIds.add(tile.id());
         }
         rebuildOwners();
         activeGroupId = groups.keySet().stream().findFirst().orElse(null);
@@ -315,6 +315,8 @@ public final class WorldGroupEditorScreen extends Screen {
         }
         renderButton(graphics, x, y + 148, w, 20, "M 地图显示：" + (group != null && group.configured ? "开" : "关"),
                 group != null, inRect(mouseX, mouseY, x, y + 148, w, 20));
+        renderButton(graphics, x, y + 172, w, 20, "非创造无法离开：" + (group != null && group.cannotLeave ? "开" : "关"),
+                group != null, inRect(mouseX, mouseY, x, y + 172, w, 20));
     }
 
     private void renderActionButtons(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
@@ -365,6 +367,7 @@ public final class WorldGroupEditorScreen extends Screen {
             int icon = iconAt(mouseX, mouseY, layout);
             if (icon >= 0) { setIcon(ICONS.get(icon)); return true; }
             if (inRect(mouseX, mouseY, sb.x + 8, sb.detailY + 148, sb.width - 16, 20)) { toggleConfigured(); return true; }
+            if (inRect(mouseX, mouseY, sb.x + 8, sb.detailY + 172, sb.width - 16, 20)) { toggleCannotLeave(); return true; }
             if (clickActionButton(mouseX, mouseY, layout)) return true;
         }
         MapTile tile = tileAt(mouseX, mouseY, layout);
@@ -414,6 +417,10 @@ public final class WorldGroupEditorScreen extends Screen {
             group.configured = !group.configured;
             refreshAtlas();
         });
+    }
+
+    private void toggleCannotLeave() {
+        active().ifPresent(group -> group.cannotLeave = !group.cannotLeave);
     }
 
     private void setIcon(String icon) {
@@ -580,7 +587,7 @@ public final class WorldGroupEditorScreen extends Screen {
     private void save() {
         List<ManualChunkGroupLayout.Group> draft = groups.values().stream()
                 .map(group -> new ManualChunkGroupLayout.Group(group.id, group.name, group.icon, group.site,
-                        group.resources, group.configured, List.copyOf(group.tileIds))).toList();
+                        group.resources, group.configured, group.cannotLeave, List.copyOf(group.tileIds))).toList();
         PacketDistributor.sendToServer(new SaveWorldGroupEditPayload(manualGroups, snapshot.groupRevision(), draft));
     }
 
@@ -609,7 +616,7 @@ public final class WorldGroupEditorScreen extends Screen {
         int listY = sideTop + 50;
         int saveHeight = 22;
         int actionHeight = 48;
-        int detailHeight = 172;
+        int detailHeight = 196;
         int saveY = sideBottom - saveHeight - 2;
         int actionY = saveY - actionHeight - 6;
         int detailY = actionY - detailHeight - 6;
@@ -732,15 +739,21 @@ public final class WorldGroupEditorScreen extends Screen {
         private String site;
         private String resources;
         private boolean configured;
+        private boolean cannotLeave;
         private final LinkedHashSet<String> tileIds = new LinkedHashSet<>();
 
         private DraftGroup(String id, String name, String icon, String site, String resources, boolean configured) {
+            this(id, name, icon, site, resources, configured, false);
+        }
+
+        private DraftGroup(String id, String name, String icon, String site, String resources, boolean configured, boolean cannotLeave) {
             this.id = id;
             this.name = name;
             this.icon = icon;
             this.site = site;
             this.resources = resources;
             this.configured = configured;
+            this.cannotLeave = cannotLeave;
         }
     }
 

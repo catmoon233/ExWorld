@@ -83,6 +83,13 @@ public final class PlayerBackpack {
         return grid.canPlace(origin, ItemStackOps.INSTANCE.footprint(stack), ignore);
     }
 
+    /** Snaps a carried stack onto a valid origin near {@code cell}. Returns -1 if nothing fits. */
+    public int resolvePlacement(int cell, ItemStack stack) {
+        if (stack == null || stack.isEmpty() || cell < 0 || cell >= StorageCore.GRID_CELLS) return -1;
+        return snapshotGrid().resolveOrigin(cell, ItemStackOps.INSTANCE.footprint(stack), -1);
+    }
+
+
     public boolean admit(ItemStack incoming) {
         if (incoming == null || incoming.isEmpty()) return true;
         MUTATING.set(true);

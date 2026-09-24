@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:empty",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:scattershot_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:wind_chamber_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:singularity_charge_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:lead_core_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:trick_bullet_modifier"
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:voltaic_core_modifier"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "irons_artifice:loadouts/illificer/aux_modifier"
+}

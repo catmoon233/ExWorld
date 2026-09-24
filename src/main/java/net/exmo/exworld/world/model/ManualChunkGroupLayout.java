@@ -44,7 +44,7 @@ public final class ManualChunkGroupLayout {
             requireConnected(group, byId, tileAt);
             group.tileIds().forEach(tileId -> owner.put(tileId, group));
             regions.add(new Region(group.id(), group.tileIds(), group.name(), storySeed(group.id()), group.icon(),
-                    group.site(), group.resources(), group.configured()));
+                    group.site(), group.resources(), group.configured(), group.cannotLeave()));
         }
         if (!claimed.equals(byId.keySet())) {
             Set<String> missing = new HashSet<>(byId.keySet());
@@ -95,10 +95,13 @@ public final class ManualChunkGroupLayout {
     private static long key(int x, int z) { return (long) x << 32 ^ z & 0xFFFFFFFFL; }
 
     public record Group(String id, String name, String icon, String site, String resources, boolean configured,
-                        List<String> tileIds) {
+                        boolean cannotLeave, List<String> tileIds) {
         public Group { tileIds = List.copyOf(tileIds); }
+        public Group(String id, String name, String icon, String site, String resources, boolean configured, List<String> tileIds) {
+            this(id, name, icon, site, resources, configured, false, tileIds);
+        }
         public Group(String id, String name, String icon, List<String> tileIds) {
-            this(id, name, icon, "", "", false, tileIds);
+            this(id, name, icon, "", "", false, false, tileIds);
         }
     }
 

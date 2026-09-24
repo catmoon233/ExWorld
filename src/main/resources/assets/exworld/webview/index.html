@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ExWorld</title>
+<style>
+  :root {
+    --ink: #f4f5f7;
+    --ink-muted: #b6bac1;
+    --ink-dark: #191a1c;
+    --canvas: #202124;
+    --surface: #48494a;
+    --surface-deep: #313233;
+    --surface-soft: #d0d1d4;
+    --edge: #1e1e1f;
+    --edge-light: #77797c;
+    --green: #3c8527;
+    --green-hover: #2a641c;
+    --green-shadow: #1d4d13;
+    --red: #b33b31;
+    --red-hover: #8b2923;
+    --red-shadow: #662019;
+    --success: #69ad45;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 16px/1.5 "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  }
+  .navbar {
+    min-height: 64px;
+    padding: 10px 20px 16px;
+    border-bottom: 3px solid #151516;
+    color: var(--ink-dark);
+    background: #e6e8eb;
+    box-shadow: inset 0 -6px #b1b2b5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    font-size: 25px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+  }
+  .nav-chip {
+    min-height: 36px;
+    padding: 7px 12px 9px;
+    border: 2px solid #242527;
+    color: #fff;
+    background: var(--green);
+  }
+  main { padding: 20px; }
+  .crumb { margin: 0 0 16px; color: var(--ink-muted); }
+  .crumb span { color: var(--edge-light); }
+  .card {
+    max-width: 560px;
+    border: 3px solid var(--edge);
+    background: var(--surface);
+    box-shadow: inset 2px 2px var(--edge-light), inset -2px -2px #292a2b;
+  }
+  .card-header {
+    min-height: 46px;
+    padding: 12px 16px;
+    border-bottom: 3px solid var(--edge);
+    background: var(--surface-deep);
+    font-size: 18px;
+    line-height: 1.1;
+  }
+  .card-body { padding: 16px; }
+  .kicker {
+    margin: 0 0 8px;
+    color: var(--success);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+  }
+  h1 { margin: 0 0 8px; font-size: 36px; font-weight: 600; line-height: 1.15; }
+  #status { margin: 0 0 16px; color: var(--ink-muted); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    min-height: 42px;
+    padding: 7px 16px 13px;
+    border: 3px solid var(--edge);
+    color: #fff;
+    font: inherit;
+    line-height: 1;
+    text-shadow: 2px 2px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+  }
+  #ping {
+    background: var(--green);
+    box-shadow: inset 0 -6px var(--green-shadow), inset 3px 3px rgba(255, 255, 255, 0.22);
+  }
+  #ping:hover { background: var(--green-hover); }
+  #close {
+    background: var(--red);
+    box-shadow: inset 0 -6px var(--red-shadow), inset 3px 3px rgba(255, 255, 255, 0.2);
+  }
+  #close:hover { background: var(--red-hover); }
+  button:active { padding-top: 9px; padding-bottom: 11px; }
+</style>
+</head>
+<body>
+<header class="navbar">
+  <div class="brand">EXWORLD</div>
+  <div class="nav-chip">WebView</div>
+</header>
+<main>
+  <p class="crumb">ExWorld <span>&gt;</span> WebView</p>
+  <section class="card">
+    <div class="card-header">桥接</div>
+    <div class="card-body">
+      <p class="kicker">ORE</p>
+      <h1>ExWorld</h1>
+      <p id="status">等待桥接…</p>
+      <div class="actions">
+        <button id="ping" type="button">桥接正常</button>
+        <button id="close" type="button">关闭</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+  window.exworld = window.exworld || {
+    post: function (message) {
+      var payload = message;
+      if (typeof message === "string") {
+        try { payload = JSON.parse(message); }
+        catch (e) { payload = { type: "message", text: message }; }
+      }
+      if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(payload);
+    }
+  };
+  var status = document.getElementById("status");
+  document.getElementById("ping").addEventListener("click", function () {
+    window.exworld.post(JSON.stringify({ type: "ping" }));
+    status.textContent = "桥接正常";
+  });
+  document.getElementById("close").addEventListener("click", function () {
+    window.exworld.post(JSON.stringify({ type: "close" }));
+  });
+  window.exworld.post(JSON.stringify({ type: "ready" }));
+</script>
+</body>
+</html>

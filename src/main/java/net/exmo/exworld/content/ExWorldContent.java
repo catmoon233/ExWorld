@@ -9,6 +9,8 @@ import net.exmo.exworld.content.block.ShipHelmBlock;
 import net.exmo.exworld.content.item.ShipToolItem;
 import net.exmo.exworld.content.item.StorageCoreItem;
 import net.exmo.exworld.inventory.InventoryRegistries;
+import net.exmo.exworld.npc.entity.UrbanNpc;
+import net.exmo.exworld.npc.item.NpcWandItem;
 import net.exmo.exworld.ship.entity.ShipEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -63,6 +65,10 @@ public final class ExWorldContent {
             () -> BlockEntityType.Builder.of(DungeonEntranceBlockEntity::new, DUNGEON_ENTRANCE.get()).build(null));
     public static final DeferredHolder<EntityType<?>, EntityType<ShipEntity>> SHIP = ENTITIES.register("ship",
             () -> EntityType.Builder.of(ShipEntity::new, MobCategory.MISC).sized(1.0F, 1.0F).clientTrackingRange(10).updateInterval(1).fireImmune().build("exworld:ship"));
+    public static final DeferredHolder<EntityType<?>, EntityType<UrbanNpc>> URBAN_NPC = ENTITIES.register("urban_npc",
+            () -> EntityType.Builder.of(UrbanNpc::new, MobCategory.CREATURE).sized(0.6F, 1.8F).clientTrackingRange(8).updateInterval(3).build("exworld:urban_npc"));
+    public static final DeferredItem<NpcWandItem> NPC_WAND = ITEMS.register("npc_wand",
+            () -> new NpcWandItem(new Item.Properties().stacksTo(1)));
 
     private ExWorldContent() {}
 

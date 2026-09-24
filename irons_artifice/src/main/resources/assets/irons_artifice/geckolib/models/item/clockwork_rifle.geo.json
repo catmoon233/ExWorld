@@ -1,0 +1,99 @@
+{
+	"format_version": "1.21.110",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.unknown",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 6,
+				"visible_bounds_height": 4,
+				"visible_bounds_offset": [0, 0, 0]
+			},
+			"bones": [
+				{
+					"name": "root",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "left_arm",
+					"parent": "root",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "right_arm",
+					"parent": "root",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "gun",
+					"parent": "root",
+					"pivot": [0, 0, 1.5],
+					"cubes": [
+						{"origin": [-1, 2, -27], "size": [2, 2, 17], "uv": [0, 23]},
+						{"origin": [0, 3.75, -30], "size": [0, 3, 3], "inflate": 0.001, "uv": [0, 33]},
+						{"origin": [0, -3, -8.5], "size": [0, 5, 11], "inflate": 0.001, "uv": [0, 33]},
+						{"origin": [0, 2.75, -32], "size": [1, 1, 22], "pivot": [0, 3.75, -15], "rotation": [0, 0, 45], "uv": [0, 0]},
+						{"origin": [0, 3.75, -30], "size": [0, 2, 1], "uv": [34, 0]},
+						{"origin": [0, 2.75, -30], "size": [0, 3, 1], "pivot": [0, 5.75, -29], "rotation": [40, 0, 0], "uv": [4, 0]},
+						{"origin": [-1, 1.5, -10], "size": [2, 3, 10], "uv": [0, 51]},
+						{"origin": [-1, 1.5, -10], "size": [2, 2, 6], "inflate": -0.005, "pivot": [-0.5, 1.5, -10], "rotation": [-17.5, 0, 0], "uv": [25, 56]},
+						{"origin": [-1, 1.5, -22], "size": [2, 1, 10], "inflate": 0.1, "uv": [40, 42]}
+					]
+				},
+				{
+					"name": "stock",
+					"parent": "gun",
+					"pivot": [0, 3.25, 0.5],
+					"rotation": [-45, 0, 0],
+					"cubes": [
+						{"origin": [-1, 0.25, -0.5], "size": [2, 3, 7], "inflate": -0.005, "uv": [44, 54]}
+					]
+				},
+				{
+					"name": "stockbutt",
+					"parent": "stock",
+					"pivot": [0, 9.25, 13.5],
+					"rotation": [45, 0, 0],
+					"cubes": [
+						{"origin": [-1, 11.5, -0.25], "size": [2, 3, 13], "inflate": -0.01, "uv": [24, 6]},
+						{"origin": [-1, 8.5, 12.75], "size": [2, 6, 2], "inflate": -0.01, "uv": [54, 17]},
+						{"origin": [-1, 8.5, 2.75], "size": [2, 3, 10], "inflate": -0.015, "pivot": [-0.5, 8.5, 12.75], "rotation": [-17.5, 0, 0], "uv": [40, 23]}
+					]
+				},
+				{
+					"name": "magazine",
+					"parent": "gun",
+					"pivot": [-5, 3.5, -5],
+					"cubes": [
+						{"origin": [-6, 2, -8], "size": [8, 2, 6], "inflate": -0.25, "uv": [17, 43]}
+					]
+				},
+				{
+					"name": "carryhandle",
+					"parent": "gun",
+					"pivot": [-1, 4.5, -3],
+					"cubes": [
+						{"origin": [-0.5, 4.5, -9], "size": [1, 1, 6], "uv": [0, 0]},
+						{"origin": [-0.5, 4.5, -10], "size": [1, 2, 9], "uv": [0, 7]}
+					]
+				},
+				{
+					"name": "attachment_optic",
+					"parent": "carryhandle",
+					"pivot": [0, 5.5, -5]
+				},
+				{
+					"name": "attachment_muzzle",
+					"parent": "gun",
+					"pivot": [0, 3, -32]
+				},
+				{
+					"name": "attachment_bayonet",
+					"parent": "gun",
+					"pivot": [0, 2, -28.5]
+				}
+			]
+		}
+	]
+}

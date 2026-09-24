@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>手机</title>
+<style>
+  :root { --ink:#1c1c1e; --muted:#8e8e93; --line:#e5e5ea; --green:#07c160; --gold:#c9a227; --blue:#0a84ff; --red:#ff3b30; --card:#fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 30% 20%, #3a3f4b, #12141a 62%); font: 14px/1.4 "Segoe UI", "Microsoft YaHei UI", sans-serif; color: var(--ink); }
+  .phone { width: 340px; height: 600px; padding: 12px; border-radius: 36px; background: #0e0e10; box-shadow: 0 24px 60px rgba(0,0,0,.45), inset 0 0 0 2px #2c2c2e; position: relative; }
+  .screen { height: 100%; border-radius: 26px; overflow: hidden; background: #f6f6f8; position: relative; }
+  .bar { height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12px; font-weight: 650; }
+  .quickbar { position: absolute; top: 28px; left: 0; right: 0; z-index: 3; height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); }
+  .quickbar button { height: 22px; border: 0; border-radius: 8px; background: #ececef; padding: 0 8px; font-size: 12px; cursor: pointer; }
+  .quickbar .sub { min-height: 0; margin: 0; font-size: 11px; white-space: nowrap; overflow: hidden; }
+  .notch { position: absolute; top: 8px; left: 50%; width: 92px; height: 18px; transform: translateX(-50%); border-radius: 12px; background: #0e0e10; }
+  .views { position: absolute; inset: 56px 0 22px; }
+  .view { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 8px 14px 12px; opacity: 0; transform: translateX(28px); pointer-events: none; transition: transform .32s cubic-bezier(.2,.8,.2,1), opacity .32s; }
+  .view.on { opacity: 1; transform: none; pointer-events: auto; }
+  .home { background: linear-gradient(180deg, #d7ecff, #f6f6f8 46%); }
+  .clock { margin: 12px 0 4px; font-size: 48px; letter-spacing: -2px; }
+  .map i { background: #5ac8fa; color: #083044; }
+  #map-canvas { width: 100%; height: 250px; border-radius: 16px; background: #e7efe4; }
+  .apps { margin-top: 12px; }
+  .home { overflow: auto; }
+  .set i { background: #8e8e93; } .calcapp i { background: #ff9f0a; } .note i { background: #ffd60a; color: #3a2a00; }
+  .timer i { background: #ff375f; } .convert i { background: #30d158; }
+  .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .keys button, .choice { height: 36px; border: 0; border-radius: 10px; background: #ececef; cursor: pointer; }
+  .readout { font-size: 28px; text-align: right; padding: 10px; background: #fff; border-radius: 12px; overflow: hidden; }
+  html[data-theme="dark"] .screen, html[data-theme="dark"] .home { background: #1c1c1e; color: #f2f2f7; }
+  html[data-theme="dark"] .quickbar, html[data-theme="dark"] input, html[data-theme="dark"] textarea, html[data-theme="dark"] .bubble, html[data-theme="dark"] .readout, html[data-theme="dark"] .keys button, html[data-theme="dark"] .choice { background: #2c2c2e; color: #f2f2f7; }
+  .map-card { margin-top: 8px; padding: 10px; border-radius: 14px; background: #fff; white-space: pre-line; }
+  .sub { color: var(--muted); min-height: 20px; }
+  .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 8px; margin-top: 28px; }
+  .app { border: 0; background: transparent; color: inherit; cursor: pointer; }
+  .app i { width: 54px; height: 54px; margin: 0 auto 6px; display: grid; place-items: center; border-radius: 16px; color: #fff; font-style: normal; font-weight: 700; box-shadow: 0 8px 16px rgba(0,0,0,.12); transition: transform .16s; }
+  .app:active i { transform: scale(.9); }
+  .app span { display: block; font-size: 12px; }
+  .wechat i { background: var(--green); } .sms i { background: var(--blue); } .pay i { background: linear-gradient(180deg, #f0d078, var(--gold)); color: #3a2a00; }
+  .camera i { background: #1c1c1e; } .dial i { background: #34c759; } .card i { background: #5856d6; }
+  .wifi i { background: #64d2ff; color: #083044; }
+  .warn { color: var(--red); }
+  header.top { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+  header.top button, .row button, .chip { border: 0; border-radius: 10px; background: #ececef; cursor: pointer; }
+  header.top button { width: 32px; height: 32px; }
+  h1 { margin: 0; font-size: 20px; flex: 1; }
+  .tabs { display: flex; gap: 6px; margin: 8px 0; }
+  .tabs button.on { background: var(--ink); color: #fff; }
+  .tabs button { flex: 1; height: 30px; }
+  .list { flex: 1; overflow: auto; }
+  .row, .bubble, .moment, .npc { animation: rise .28s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  input, textarea { width: 100%; border: 0; border-radius: 12px; background: #fff; padding: 9px 10px; margin: 4px 0; }
+  .composer { display: flex; gap: 8px; }
+  .composer input { flex: 1; }
+  .go { background: var(--green) !important; color: #fff; min-width: 64px; }
+  .danger { background: var(--red) !important; color: #fff; }
+  .gold { color: #8a6a12; font-size: 32px; margin: 8px 0; }
+  .bubble { max-width: 78%; margin: 6px 0; padding: 8px 10px; border-radius: 14px; background: #fff; }
+  .bubble.me { margin-left: auto; background: #d8f8e4; }
+  .moment, .npc { background: var(--card); border-radius: 14px; padding: 10px; margin: 8px 0; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+  .moment b, .npc b { display: block; }
+  .homebar { position: absolute; left: 50%; bottom: 8px; width: 108px; height: 5px; transform: translateX(-50%); border-radius: 4px; background: #1c1c1e; cursor: pointer; }
+  .toast { position: absolute; left: 78px; right: 78px; top: 248px; z-index: 9; min-height: 44px; padding: 12px 14px; border-radius: 8px; background: rgba(76,76,76,.92); color: #fff; line-height: 22px; text-align: center; white-space: normal; opacity: 0; overflow: visible; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .hidden { display: none; }
+  .tools { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .tools button { flex: 1; min-width: 58px; height: 28px; border: 0; border-radius: 10px; background: #ececef; cursor: pointer; font-size: 12px; }
+  .claim { display: block; margin-top: 6px; border: 0; border-radius: 10px; background: var(--gold); color: #3a2a00; cursor: pointer; }
+  select { width: 100%; border: 0; border-radius: 12px; background: #fff; padding: 8px 10px; margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="bar"><span id="clock">00:00</span><span id="sig">SIM</span></div>
+    <div class="quickbar"><button id="top-bill" type="button">充值</button><button id="top-wifi" type="button">WiFi</button><span class="sub" id="quick-meta"></span></div>
+    <div class="views">
+      <section id="home" class="view home on">
+        <div class="clock" id="big">00:00</div>
+        <div class="sub" id="status">正在连接…</div>
+        <div class="sub" id="identity"></div>
+        <div class="apps">
+          <button class="app wechat" data-open="wechat"><i>微</i><span>微信</span></button>
+          <button class="app sms" data-open="sms"><i>信</i><span>短信</span></button>
+          <button class="app pay" data-open="pay"><i>¥</i><span>钱包</span></button>
+          <button class="app camera" data-open="camera"><i>拍</i><span>拍照</span></button>
+          <button class="app dial" data-open="dial"><i>电</i><span>电话</span></button>
+          <button class="app map" data-open="map"><i>图</i><span>地图</span></button>
+          <button class="app wifi" data-open="wifi"><i>网</i><span>WiFi</span></button>
+          <button class="app set" data-open="settings"><i>设</i><span>设置</span></button>
+          <button class="app calcapp" data-open="calc"><i>算</i><span>计算器</span></button>
+          <button class="app note" data-open="notes"><i>记</i><span>记事录</span></button>
+          <button class="app timer" data-open="timer"><i>时</i><span>计时</span></button>
+          <button class="app convert" data-open="convert"><i>换</i><span>换算</span></button>
+          <button class="app card hidden" id="card-app" data-open="editor"><i>名</i><span>名片</span></button>
+        </div>
+      </section>
+      <section id="wechat" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>微信</h1></header>
+        <div class="sub warn" id="net-line"></div>
+        <div id="bill-box">
+          <div class="sub" id="bill-line">话费 0 · 流量 0</div>
+          <div class="composer"><input id="bill-amount" placeholder="金币或话费" inputmode="numeric"><button id="topup" type="button">充值话费</button><button id="buy-data" type="button">兑换流量</button></div>
+        </div>
+        <div class="tabs">
+          <button class="on" data-tab="chats" type="button">消息</button>
+          <button data-tab="contacts" type="button">通讯录</button>
+          <button data-tab="moments" type="button">朋友圈</button>
+        </div>
+        <div class="list" id="wechat-chats"></div>
+        <div class="list hidden" id="wechat-contacts"></div>
+        <div class="list hidden" id="wechat-moments"></div>
+        <div id="chat-box">
+          <input id="chat-to" placeholder="好友微信名，或点选群聊">
+          <div class="sub" id="chat-peer">未选择会话</div>
+          <div class="composer"><input id="chat-text" placeholder="消息"><button class="go" id="send" type="button">发送</button></div>
+          <div class="tools">
+            <button id="photo-go" type="button">发图</button>
+            <button id="transfer-go" type="button">转账</button>
+            <button id="redpack-go" type="button">红包</button>
+            <button id="voice-go" type="button">群语音</button>
+          </div>
+          <select id="photo-slot"></select>
+          <div class="composer"><input id="money" placeholder="金额" inputmode="numeric"><input id="shares" placeholder="红包份数" inputmode="numeric" value="1"></div>
+        </div>
+        <div id="contact-box" class="hidden">
+          <div class="composer"><input id="friend-name" placeholder="添加微信名"><button class="go" id="friend" type="button">添加</button></div>
+          <div class="composer"><input id="rename" placeholder="修改我的微信名"><button id="rename-go" type="button">保存</button></div>
+          <input id="group-name" placeholder="群名">
+          <input id="group-members" placeholder="好友微信名，逗号分隔">
+          <button class="go" id="group-go" type="button">新建群聊</button>
+        </div>
+        <div id="moment-box" class="hidden">
+          <textarea id="moment-text" rows="2" placeholder="这一刻的想法"></textarea>
+          <button class="go" id="moment" type="button">发布</button>
+          <div class="composer"><input id="comment-text" placeholder="评论选中的朋友圈"><button id="comment" type="button">评论</button></div>
+        </div>
+      </section>
+      <section id="sms" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>短信</h1></header>
+        <div class="list" id="sms-list"></div>
+        <input id="sms-to" placeholder="对方号码">
+        <div class="composer"><input id="sms-text" placeholder="短信"><button class="go" id="sms-go" type="button">发送</button></div>
+      </section>
+      <section id="pay" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>钱包</h1></header>
+        <div class="sub">ExWorld 金币</div>
+        <div class="gold" id="gold">0</div>
+        <input id="pay-to" placeholder="玩家名、微信名或手机号">
+        <input id="pay-amount" placeholder="金额" inputmode="numeric">
+        <button class="go" id="pay-go" type="button">转账</button>
+      </section>
+      <section id="camera" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>拍照</h1></header>
+        <p class="sub">打开 Exposure 取景器。胶卷在背包里，装进相机后用它自己的快门。拍完回到微信，选中群聊再发图。</p>
+        <button class="go" id="shoot" type="button">打开相机</button>
+        <div class="list" id="album"></div>
+      </section>
+      <section id="dial" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>电话</h1></header>
+        <p class="sub" id="call-line">未通话</p>
+        <p class="sub">电话和群语音都只接入 Simple Voice Chat。模组加入后即可呼叫，当前不会自建语音。</p>
+        <div class="list" id="online"></div>
+        <input id="call-to" placeholder="玩家名或手机号">
+        <div class="composer"><button class="go" id="call" type="button">呼叫</button><button class="danger" id="hangup" type="button">挂断</button></div>
+      </section>
+      <section id="map" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>地图</h1></header>
+        <canvas id="map-canvas" width="312" height="250"></canvas>
+        <div class="map-card" id="map-card">点一个地点查看说明</div>
+      </section>
+      <section id="wifi" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>WiFi</h1></header>
+        <p class="sub" id="wifi-line">未连接 WiFi</p>
+        <div class="list" id="wifi-list"></div>
+        <div class="sub" id="wifi-pick">范围内的网络，用名称和密码连接</div>
+        <input id="wifi-name" placeholder="WiFi 名称">
+        <input id="wifi-pass" placeholder="密码">
+        <div class="composer"><button class="go" id="wifi-go" type="button">连接</button><button id="wifi-off" type="button">断开</button></div>
+      </section>
+      <section id="settings" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>设置</h1></header>
+        <p class="sub" id="set-line">未连接</p>
+        <div class="sub">主题</div>
+        <div class="composer"><button class="choice" id="theme-light" type="button">浅色</button><button class="choice" id="theme-dark" type="button">深色</button></div>
+        <div class="sub">字号</div>
+        <div class="composer"><button class="choice" id="font-13" type="button">小</button><button class="choice" id="font-14" type="button">中</button><button class="choice" id="font-16" type="button">大</button></div>
+        <input id="set-name" placeholder="修改微信名">
+        <div class="composer"><button class="go" id="set-rename" type="button">保存微信名</button><button id="set-wifi" type="button">断开 WiFi</button></div>
+      </section>
+      <section id="calc" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>计算器</h1></header>
+        <div class="readout" id="calc-screen">0</div>
+        <div class="keys" id="calc-keys"></div>
+      </section>
+      <section id="notes" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>记事录</h1></header>
+        <div class="list" id="note-list"></div>
+        <input id="note-id" type="hidden">
+        <input id="note-title" placeholder="标题">
+        <textarea id="note-text" rows="3" placeholder="内容"></textarea>
+        <div class="composer"><button class="go" id="note-save" type="button">保存</button><button id="note-new" type="button">新建</button></div>
+      </section>
+      <section id="timer" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>计时</h1></header>
+        <div class="readout" id="timer-left">00:00</div>
+        <div class="composer"><input id="timer-min" placeholder="分" inputmode="numeric"><input id="timer-sec" placeholder="秒" inputmode="numeric"></div>
+        <div class="composer"><button class="go" id="timer-start" type="button">开始</button><button id="timer-pause" type="button">暂停</button><button id="timer-reset" type="button">复位</button></div>
+      </section>
+      <section id="convert" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>换算</h1></header>
+        <select id="conv-kind"><option value="tick">秒 → 游戏刻</option><option value="sec">游戏刻 → 秒</option><option value="data">话费 → 流量</option><option value="meter">方块格，1 格 = 1 米</option></select>
+        <input id="conv-in" placeholder="数字" inputmode="decimal">
+        <button class="go" id="conv-go" type="button">换算</button>
+        <p class="sub" id="conv-out">结果会显示在这里</p>
+      </section>
+      <section id="editor" class="view">
+        <header class="top"><button type="button" data-open="home">‹</button><h1>NPC 名片</h1></header>
+        <input id="npc-search" placeholder="搜索 NPC">
+        <div class="list" id="npcs"></div>
+        <input id="npc-id" placeholder="NPC id" readonly>
+        <input id="npc-number" placeholder="手机号，3 到 12 位">
+        <input id="npc-wechat" placeholder="微信名">
+        <textarea id="npc-moment" rows="2" placeholder="可选：代发一条朋友圈"></textarea>
+        <button class="go" id="npc-save" type="button">保存</button>
+      </section>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="homebar" data-open="home"></div>
+  </div>
+</div>
+<script>
+  var state = { messages: [], sms: [], moments: [], book: [], requests: [], players: [], npcs: [] };
+  var tab = "chats";
+  var momentId = "";
+  function post(action, extra) {
+    var body = extra || {};
+    body.type = "phone";
+    body.action = action;
+    if (window.exworld) window.exworld.post(JSON.stringify(body));
+  }
+  function show(id) {
+    var views = document.querySelectorAll(".view");
+    for (var i = 0; i < views.length; i++) views[i].classList.remove("on");
+    document.getElementById(id).classList.add("on");
+  }
+  function toast(text) {
+    var node = document.getElementById("toast");
+    node.textContent = text || "";
+    node.classList.add("show");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { node.classList.remove("show"); }, 2200);
+  }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function tick() {
+    var now = new Date();
+    var text = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    document.getElementById("clock").textContent = text;
+    document.getElementById("big").textContent = text;
+  }
+  function line(parent, html, className) {
+    var item = document.createElement("div");
+    item.className = className || "row";
+    item.innerHTML = html;
+    parent.appendChild(item);
+    return item;
+  }
+  function render(announce) {
+    document.getElementById("status").textContent = state.status || "已连接";
+    document.getElementById("identity").textContent = (state.wechat || "") + (state.number ? " · " + state.number : " · 未安装 SIM");
+    document.getElementById("sig").textContent = state.number ? "SIM" : "无卡";
+    document.getElementById("gold").textContent = state.gold || 0;
+    document.getElementById("call-line").textContent = state.call ? "通话中：" + state.call : "未通话";
+    document.getElementById("card-app").classList.toggle("hidden", !state.editor);
+    if (announce && state.status) toast(state.status);
+    var chats = document.getElementById("wechat-chats");
+    chats.innerHTML = "";
+    var peer = document.getElementById("chat-to").value;
+    document.getElementById("chat-peer").textContent = peerLabel(peer);
+    (state.groups || []).forEach(function (group) {
+      var item = line(chats, "<b>" + esc(group.name) + "</b><span class='sub'>" + (group.members || []).join("、") + "</span>");
+      item.onclick = function () { document.getElementById("chat-to").value = "g:" + group.id; render(); };
+    });
+    (state.messages || []).slice().reverse().forEach(function (message) {
+      if (!inThread(message, peer)) return;
+      var item = line(chats, "", "bubble" + (message.from === state.wechat ? " me" : ""));
+      item.textContent = message.from + "：" + message.text;
+      if (message.kind === "transfer" || message.kind === "redpack") item.appendChild(claimButton(message.extra));
+    });
+    var contacts = document.getElementById("wechat-contacts");
+    contacts.innerHTML = "";
+    (state.requests || []).forEach(function (name) {
+      var item = line(contacts, "<b>" + name + "</b> 请求加好友");
+      var ok = document.createElement("button");
+      ok.textContent = "通过";
+      ok.onclick = function () { post("accept", { to: name }); };
+      var no = document.createElement("button");
+      no.textContent = "拒绝";
+      no.className = "danger";
+      no.onclick = function () { post("reject", { to: name }); };
+      item.appendChild(ok);
+      item.appendChild(no);
+    });
+    (state.book || []).forEach(function (card) {
+      var item = line(contacts, "<b>" + card.name + "</b><span class='sub'>" + (card.number || "无号码") + "</span>");
+      item.onclick = function () { document.getElementById("chat-to").value = card.name; setTab("chats"); render(); };
+    });
+    var moments = document.getElementById("wechat-moments");
+    moments.innerHTML = "";
+    (state.moments || []).forEach(function (moment) {
+      var item = line(moments, "", "moment");
+      item.innerHTML = "<b>" + moment.author + "</b><div>" + moment.text + "</div>";
+      var like = document.createElement("button");
+      like.textContent = (moment.liked ? "已赞 " : "赞 ") + (moment.likes || 0);
+      like.onclick = function () { momentId = moment.id; post("like", { id: moment.id }); };
+      item.appendChild(like);
+      (moment.comments || []).forEach(function (comment) {
+        var note = document.createElement("div");
+        note.className = "sub";
+        note.textContent = comment.from + "：" + comment.text;
+        item.appendChild(note);
+      });
+      item.onclick = function () { momentId = moment.id; };
+    });
+    var sms = document.getElementById("sms-list");
+    sms.innerHTML = "";
+    (state.sms || []).slice().reverse().forEach(function (message) {
+      line(sms, "", "bubble" + (message.from === state.number ? " me" : "")).textContent = message.from + " → " + message.to + "：" + message.text;
+    });
+    var online = document.getElementById("online");
+    online.innerHTML = "";
+    (state.players || []).forEach(function (name) {
+      var item = line(online, name);
+      item.onclick = function () { document.getElementById("call-to").value = name; document.getElementById("pay-to").value = name; };
+    });
+    fillPhotos();
+    fillAlbum();
+    fillNet();
+    fillTools();
+    renderNpcs();
+    renderMap();
+  }
+  function fillNet() {
+    var online = !!state.online;
+    var net = document.getElementById("net-line");
+    net.textContent = online
+      ? (state.wifi ? "微信可用 · WiFi " + state.wifi : "微信可用 · 流量 " + (state.data || 0))
+      : "未连接 WiFi，且没有可用流量，微信不可用";
+    net.classList.toggle("warn", !online);
+    document.getElementById("bill-line").textContent = "SIM " + (state.number || "未安装") + " · 话费 " + (state.credit || 0) + " · 流量 " + (state.data || 0);
+    document.getElementById("quick-meta").textContent = "话费 " + (state.credit || 0);
+    document.getElementById("wifi-line").textContent = state.wifi ? "已连接 " + state.wifi : "未连接 WiFi";
+    var list = document.getElementById("wifi-list");
+    list.innerHTML = "";
+    var nets = state.wifis || [];
+    if (!nets.length) line(list, "范围内没有 WiFi");
+    nets.forEach(function (item) {
+      var row = line(list, "<b>" + esc(item.name) + "</b><span class='sub'>" + item.dist + " 格 / 范围 " + item.range + "</span>");
+      row.onclick = function () {
+        document.getElementById("wifi-name").value = item.name;
+        document.getElementById("wifi-pick").textContent = "准备连接 " + item.name;
+      };
+    });
+    ["send", "photo-go", "transfer-go", "redpack-go", "voice-go", "friend", "group-go", "moment", "comment", "rename-go"].forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) node.disabled = !online;
+    });
+  }
+  function fillTools() {
+    document.documentElement.setAttribute("data-theme", state.theme === "dark" ? "dark" : "light");
+    document.body.style.fontSize = (state.font || "14") + "px";
+    document.getElementById("set-line").textContent = (state.number || "未装 SIM") + " · 话费 " + (state.credit || 0) + " · " + (state.wifi || "未连 WiFi");
+    var list = document.getElementById("note-list");
+    list.innerHTML = "";
+    var notes = state.notes || [];
+    if (!notes.length) line(list, "还没有记事");
+    notes.forEach(function (note) {
+      var item = line(list, "<b>" + esc(note.title) + "</b><span class='sub'>" + esc(note.text) + "</span>");
+      item.onclick = function () {
+        document.getElementById("note-id").value = note.id;
+        document.getElementById("note-title").value = note.title || "";
+        document.getElementById("note-text").value = note.text || "";
+      };
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "danger";
+      del.textContent = "删除";
+      del.onclick = function (event) { event.stopPropagation(); post("note_delete", { id: note.id }); };
+      item.appendChild(del);
+    });
+  }
+  var calc = { value: "0", acc: null, op: null, fresh: false };
+  function calcPress(key) {
+    if (key === "C") calc = { value: "0", acc: null, op: null, fresh: false };
+    else if (key === "⌫") calc.value = calc.value.length > 1 ? calc.value.slice(0, -1) : "0";
+    else if ("+-*/".indexOf(key) >= 0) { calcSolve(); calc.acc = Number(calc.value); calc.op = key; calc.fresh = true; }
+    else if (key === "=") { calcSolve(); calc.op = null; calc.acc = null; }
+    else if (calc.fresh || calc.value === "0") { calc.value = key === "." ? "0." : key; calc.fresh = false; }
+    else if (!(key === "." && calc.value.indexOf(".") >= 0)) calc.value += key;
+    document.getElementById("calc-screen").textContent = calc.value;
+  }
+  function calcSolve() {
+    if (calc.op == null || calc.acc == null) return;
+    var b = Number(calc.value), a = calc.acc, n = NaN;
+    if (calc.op === "+") n = a + b;
+    if (calc.op === "-") n = a - b;
+    if (calc.op === "*") n = a * b;
+    if (calc.op === "/") n = b === 0 ? NaN : a / b;
+    calc.value = Number.isFinite(n) ? String(Math.round(n * 1000000) / 1000000) : "错误";
+    calc.fresh = true;
+  }
+  var timer = { left: 0, running: false, handle: 0 };
+  function timerShow() {
+    document.getElementById("timer-left").textContent = pad(Math.floor(timer.left / 60)) + ":" + pad(timer.left % 60);
+  }
+  function timerSet() {
+    var m = Number(document.getElementById("timer-min").value) || 0;
+    var s = Number(document.getElementById("timer-sec").value) || 0;
+    timer.left = Math.max(0, Math.min(3600, Math.floor(m) * 60 + Math.floor(s)));
+    timerShow();
+  }
+  function inThread(message, peer) {
+    if (!peer) return true;
+    if (peer.indexOf("g:") === 0) return message.to === peer;
+    return message.to.indexOf("g:") !== 0 && (message.from === peer || message.to === peer);
+  }
+  function peerLabel(peer) {
+    if (!peer) return "未选择会话";
+    if (peer.indexOf("g:") !== 0) return "正在和 " + peer + " 聊天";
+    var id = peer.slice(2);
+    var name = peer;
+    (state.groups || []).forEach(function (group) { if (group.id === id) name = group.name; });
+    return "群聊 " + name + " · 语音走 Simple Voice Chat";
+  }
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/[&<>"]/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[ch];
+    });
+  }
+  function claimButton(id) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "claim";
+    var packet = null;
+    (state.packets || []).forEach(function (item) { if (item.id === id) packet = item; });
+    if (!packet || packet.claimed || packet.left <= 0) {
+      button.textContent = !packet ? "无法领取" : (packet.claimed ? "已领取" : "已领完");
+      button.disabled = true;
+      return button;
+    }
+    button.textContent = "领取";
+    button.onclick = function (event) { event.stopPropagation(); post("claim", { id: packet.id }); };
+    return button;
+  }
+  function fillPhotos() {
+    var select = document.getElementById("photo-slot");
+    var current = select.value;
+    select.innerHTML = "";
+    var photos = state.album || [];
+    if (!photos.length) {
+      var empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "还没有照片";
+      select.appendChild(empty);
+      return;
+    }
+    photos.forEach(function (photo) {
+      var option = document.createElement("option");
+      option.value = String(photo.slot);
+      option.textContent = photo.name || ("照片 " + photo.slot);
+      select.appendChild(option);
+    });
+    if (current) select.value = current;
+  }
+  function fillAlbum() {
+    var album = document.getElementById("album");
+    album.innerHTML = "";
+    var photos = state.album || [];
+    if (!photos.length) { line(album, "还没有拍过的照片"); return; }
+    photos.forEach(function (photo) {
+      line(album, "<b>" + esc(photo.name || "照片") + "</b><span class='sub'>#" + photo.slot + "</span>");
+    });
+  }
+  var mapHits = [];
+  function renderMap() {
+    var canvas = document.getElementById("map-canvas");
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext("2d");
+    var places = (state.map || []).filter(function (place) { return !state.dim || !place.dim || place.dim === state.dim; });
+    var xs = [], zs = [];
+    places.forEach(function (place) { xs.push(place.x1, place.x2); zs.push(place.z1, place.z2); });
+    if (state.px !== undefined) { xs.push(state.px); zs.push(state.pz); }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#e7efe4";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    mapHits = [];
+    if (!xs.length) return;
+    var minX = Math.min.apply(null, xs) - 12, maxX = Math.max.apply(null, xs) + 12;
+    var minZ = Math.min.apply(null, zs) - 12, maxZ = Math.max.apply(null, zs) + 12;
+    var pad = 16, w = canvas.width - pad * 2, h = canvas.height - pad * 2;
+    function X(value) { return pad + (value - minX) / (maxX - minX || 1) * w; }
+    function Z(value) { return pad + (value - minZ) / (maxZ - minZ || 1) * h; }
+    places.forEach(function (place) {
+      var x = Math.min(X(place.x1), X(place.x2));
+      var y = Math.min(Z(place.z1), Z(place.z2));
+      var rw = Math.max(18, Math.abs(X(place.x2) - X(place.x1)));
+      var rh = Math.max(18, Math.abs(Z(place.z2) - Z(place.z1)));
+      ctx.fillStyle = place.kind === "road" ? "#d5dbdf" : "#ffffff";
+      ctx.strokeStyle = place.kind === "road" ? "#8e98a0" : "#1c1c1e";
+      ctx.fillRect(x, y, rw, rh);
+      ctx.strokeRect(x, y, rw, rh);
+      ctx.fillStyle = "#1c1c1e";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(place.name, x + 4, y + 13);
+      mapHits.push({ place: place, x: x, y: y, w: rw, h: rh });
+    });
+    if (state.px !== undefined) {
+      ctx.fillStyle = "#0a84ff";
+      ctx.beginPath();
+      ctx.arc(X(state.px), Z(state.pz), 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function renderNpcs() {
+    var query = (document.getElementById("npc-search").value || "").toLowerCase();
+    var list = document.getElementById("npcs");
+    list.innerHTML = "";
+    (state.npcs || []).forEach(function (npc) {
+      var hay = (npc.name + " " + npc.id + " " + npc.wechat + " " + npc.number).toLowerCase();
+      if (query && hay.indexOf(query) < 0) return;
+      var item = line(list, "", "npc");
+      item.innerHTML = "<b>" + npc.name + "</b><span class='sub'>" + (npc.wechat || "未设微信") + " · " + (npc.number || "无号码") + "</span>";
+      item.onclick = function () {
+        document.getElementById("npc-id").value = npc.id;
+        document.getElementById("npc-number").value = npc.number || "";
+        document.getElementById("npc-wechat").value = npc.wechat || "";
+      };
+    });
+  }
+  function setTab(next) {
+    tab = next;
+    ["chats", "contacts", "moments"].forEach(function (name) {
+      document.getElementById("wechat-" + name).classList.toggle("hidden", name !== next);
+      document.querySelector("[data-tab='" + name + "']").classList.toggle("on", name === next);
+    });
+    document.getElementById("chat-box").classList.toggle("hidden", next !== "chats");
+    document.getElementById("contact-box").classList.toggle("hidden", next !== "contacts");
+    document.getElementById("moment-box").classList.toggle("hidden", next !== "moments");
+  }
+  document.querySelectorAll("[data-open]").forEach(function (node) { node.onclick = function () { show(node.getAttribute("data-open")); }; });
+  document.getElementById("top-bill").onclick = function () { show("wechat"); };
+  document.getElementById("top-wifi").onclick = function () { show("wifi"); };
+  document.querySelectorAll("[data-tab]").forEach(function (node) { node.onclick = function () { setTab(node.getAttribute("data-tab")); }; });
+  document.getElementById("send").onclick = function () { post("chat", { to: document.getElementById("chat-to").value, text: document.getElementById("chat-text").value }); };
+  document.getElementById("group-go").onclick = function () { post("group", { text: document.getElementById("group-name").value, to: document.getElementById("group-members").value }); };
+  document.getElementById("photo-go").onclick = function () { post("photo", { to: document.getElementById("chat-to").value, slot: Number(document.getElementById("photo-slot").value || 0) }); };
+  document.getElementById("transfer-go").onclick = function () { post("transfer", { to: document.getElementById("chat-to").value, amount: Number(document.getElementById("money").value) }); };
+  document.getElementById("redpack-go").onclick = function () { post("redpack", { to: document.getElementById("chat-to").value, amount: Number(document.getElementById("money").value), shares: Number(document.getElementById("shares").value || 1) }); };
+  document.getElementById("voice-go").onclick = function () { post("voice", { to: document.getElementById("chat-to").value }); };
+  document.getElementById("chat-to").oninput = function () { render(); };
+  document.getElementById("topup").onclick = function () { post("topup", { amount: Number(document.getElementById("bill-amount").value) }); };
+  document.getElementById("buy-data").onclick = function () { post("data", { amount: Number(document.getElementById("bill-amount").value) }); };
+  document.getElementById("wifi-go").onclick = function () { post("wifi", { name: document.getElementById("wifi-name").value, text: document.getElementById("wifi-pass").value }); };
+  document.getElementById("wifi-off").onclick = function () { post("unwifi"); };
+  document.getElementById("theme-light").onclick = function () { post("setting", { name: "theme", text: "light" }); };
+  document.getElementById("theme-dark").onclick = function () { post("setting", { name: "theme", text: "dark" }); };
+  document.getElementById("font-13").onclick = function () { post("setting", { name: "font", text: "13" }); };
+  document.getElementById("font-14").onclick = function () { post("setting", { name: "font", text: "14" }); };
+  document.getElementById("font-16").onclick = function () { post("setting", { name: "font", text: "16" }); };
+  document.getElementById("set-rename").onclick = function () { post("rename", { text: document.getElementById("set-name").value }); };
+  document.getElementById("set-wifi").onclick = function () { post("unwifi"); };
+  document.getElementById("note-save").onclick = function () { post("note", { id: document.getElementById("note-id").value, name: document.getElementById("note-title").value, text: document.getElementById("note-text").value }); };
+  document.getElementById("note-new").onclick = function () { document.getElementById("note-id").value = ""; document.getElementById("note-title").value = ""; document.getElementById("note-text").value = ""; };
+  ["7", "8", "9", "/", "4", "5", "6", "*", "1", "2", "3", "-", "0", ".", "C", "+", "⌫", "="].forEach(function (key) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = key;
+    button.onclick = function () { calcPress(key); };
+    document.getElementById("calc-keys").appendChild(button);
+  });
+  document.getElementById("timer-start").onclick = function () {
+    if (timer.running) return;
+    if (timer.left <= 0) timerSet();
+    if (timer.left <= 0) return;
+    timer.running = true;
+    timer.handle = setInterval(function () {
+      timer.left--;
+      timerShow();
+      if (timer.left > 0) return;
+      clearInterval(timer.handle);
+      timer.running = false;
+      toast("计时结束");
+    }, 1000);
+  };
+  document.getElementById("timer-pause").onclick = function () { timer.running = false; clearInterval(timer.handle); };
+  document.getElementById("timer-reset").onclick = function () { timer.running = false; clearInterval(timer.handle); timerSet(); };
+  document.getElementById("conv-go").onclick = function () {
+    var n = Number(document.getElementById("conv-in").value);
+    var kind = document.getElementById("conv-kind").value;
+    var text = "请输入数字";
+    if (Number.isFinite(n)) {
+      if (kind === "tick") text = n + " 秒 = " + (n * 20) + " 游戏刻";
+      else if (kind === "sec") text = n + " 游戏刻 = " + (n / 20) + " 秒";
+      else if (kind === "data") text = n + " 话费可兑换 " + (n * 10) + " 流量";
+      else text = n + " 格 = " + n + " 米";
+    }
+    document.getElementById("conv-out").textContent = text;
+  };
+  document.getElementById("friend").onclick = function () { post("friend", { to: document.getElementById("friend-name").value }); };
+  document.getElementById("rename-go").onclick = function () { post("rename", { text: document.getElementById("rename").value }); };
+  document.getElementById("moment").onclick = function () { post("moment", { text: document.getElementById("moment-text").value }); };
+  document.getElementById("comment").onclick = function () { post("comment", { id: momentId, text: document.getElementById("comment-text").value }); };
+  document.getElementById("sms-go").onclick = function () { post("sms", { to: document.getElementById("sms-to").value, text: document.getElementById("sms-text").value }); };
+  document.getElementById("pay-go").onclick = function () { post("pay", { to: document.getElementById("pay-to").value, amount: Number(document.getElementById("pay-amount").value) }); };
+  document.getElementById("shoot").onclick = function () { post("camera"); };
+  document.getElementById("call").onclick = function () { post("call", { to: document.getElementById("call-to").value }); };
+  document.getElementById("hangup").onclick = function () { post("hangup"); };
+  document.getElementById("npc-save").onclick = function () { post("npc", { id: document.getElementById("npc-id").value, number: document.getElementById("npc-number").value, wechat: document.getElementById("npc-wechat").value, text: document.getElementById("npc-moment").value }); };
+  document.getElementById("npc-search").oninput = renderNpcs;
+  document.getElementById("map-canvas").onclick = function (event) {
+    var rect = this.getBoundingClientRect();
+    var x = (event.clientX - rect.left) * this.width / rect.width;
+    var y = (event.clientY - rect.top) * this.height / rect.height;
+    for (var i = mapHits.length - 1; i >= 0; i--) {
+      var hit = mapHits[i];
+      if (x < hit.x || x > hit.x + hit.w || y < hit.y || y > hit.y + hit.h) continue;
+      var place = hit.place;
+      document.getElementById("map-card").textContent = place.name + (place.tag ? " · " + place.tag : "") + "\n" + (place.info || "没有说明");
+      return;
+    }
+  };
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.addEventListener("message", function (event) {
+      var data = event.data;
+      if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { return; } }
+      if (data && data.wechat !== undefined) { state = data; render(true); }
+    });
+  }
+  window.exworld = window.exworld || { post: function (message) {
+    var payload = message;
+    if (typeof message === "string") { try { payload = JSON.parse(message); } catch (e) { payload = { type: "message", text: message }; } }
+    if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(payload);
+  } };
+  tick();
+  setInterval(tick, 10000);
+  post("state");
+</script>
+</body>
+</html>

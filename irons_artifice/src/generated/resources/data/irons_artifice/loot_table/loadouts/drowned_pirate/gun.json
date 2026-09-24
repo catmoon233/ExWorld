@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:empty",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:flintlock",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "irons_artifice:blunderbuss"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "irons_artifice:loadouts/drowned_pirate/gun"
+}

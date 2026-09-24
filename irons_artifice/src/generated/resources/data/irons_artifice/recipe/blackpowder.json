@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:charcoal",
+    "minecraft:redstone"
+  ],
+  "result": {
+    "item": "irons_artifice:blackpowder",
+    "count": 2
+  }
+}

@@ -42,6 +42,7 @@ public record SaveWorldGroupEditPayload(boolean manualGroups, long baseRevision,
                 for (ManualChunkGroupLayout.Group group : payload.groups) {
                     output.writeUTF(group.id()); output.writeUTF(group.name()); output.writeUTF(group.icon());
                     output.writeUTF(group.site()); output.writeUTF(group.resources()); output.writeBoolean(group.configured());
+                    output.writeBoolean(group.cannotLeave());
                     output.writeInt(group.tileIds().size());
                     for (String tileId : group.tileIds()) output.writeUTF(tileId);
                 }
@@ -65,12 +66,13 @@ public record SaveWorldGroupEditPayload(boolean manualGroups, long baseRevision,
             for (int groupIndex = 0; groupIndex < groupCount; groupIndex++) {
                 String id = input.readUTF(); String name = input.readUTF(); String icon = input.readUTF();
                 String site = input.readUTF(); String resources = input.readUTF(); boolean configured = input.readBoolean();
+                boolean cannotLeave = input.readBoolean();
                 int members = bounded(input.readInt(), 0, MAX_MEMBERS, "member count");
                 totalMembers += members;
                 if (totalMembers > MAX_MEMBERS) throw new IllegalArgumentException("too many group members");
                 List<String> tileIds = new ArrayList<>(members);
                 for (int memberIndex = 0; memberIndex < members; memberIndex++) tileIds.add(input.readUTF());
-                groups.add(new ManualChunkGroupLayout.Group(id, name, icon, site, resources, configured, tileIds));
+                groups.add(new ManualChunkGroupLayout.Group(id, name, icon, site, resources, configured, cannotLeave, tileIds));
             }
             return new SaveWorldGroupEditPayload(manual, baseRevision, groups);
         } catch (IOException exception) {

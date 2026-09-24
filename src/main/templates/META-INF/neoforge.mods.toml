@@ -109,6 +109,18 @@ config="${mod_id}.voicecast.mixins.json"
 requiredMods=["voicecastaddon"]
 
 [[dependencies."${mod_id}"]]
+modId="jei"
+type="optional"
+versionRange="[19,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[mixins]]
+config="${mod_id}.jei.mixins.json"
+requiredMods=["jei"]
+
+
+[[dependencies."${mod_id}"]]
 modId="neoforgeskyboxes"
 type="optional"
 versionRange="[0.1.1,)"

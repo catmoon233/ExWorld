@@ -39,49 +39,67 @@ public final class InventoryRuleEditorScreen extends Screen {
         this.ids.sort(Comparator.naturalOrder());
     }
 
-    @Override
     protected void init() {
-        int w = 260;
-        int left = (width - w) / 2;
-        idField = new EditBox(font, left + 8, 28, w - 16, 18, Component.translatable("screen.exworld.footprint_item"));
+        int left = panelX();
+        int top = panelY();
+        int w = InventoryLayout.IMAGE_WIDTH;
+        idField = new EditBox(font, left + 8, top + 28, w - 16, 18, Component.translatable("screen.exworld.footprint_item"));
         idField.setMaxLength(128);
         addRenderableWidget(idField);
         addRenderableWidget(Button.builder(Component.translatable("screen.exworld.footprint_from_hand"), b -> fromHand())
-                .bounds(left + 8, 50, 60, 18).build());
+                .bounds(left + 8, top + 50, 72, 18).build());
         addRenderableWidget(Button.builder(Component.literal(SIZES[sizeIndex].token()), b -> {
             sizeIndex = (sizeIndex + 1) % SIZES.length;
             rebuildWidgets();
-        }).bounds(left + 72, 50, 44, 18).build());
+        }).bounds(left + 84, top + 50, 48, 18).build());
         addRenderableWidget(Button.builder(Component.translatable("screen.exworld.footprint_apply"), b -> apply())
-                .bounds(left + 120, 50, 44, 18).build());
+                .bounds(left + 136, top + 50, 48, 18).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(left + w - 52, 50, 44, 18).build());
+                .bounds(left + w - 56, top + 50, 48, 18).build());
 
-        int y = 76;
+        int listTop = top + 76;
+        int listBottom = top + InventoryLayout.IMAGE_HEIGHT - 8;
+        int y = listTop - scroll;
         for (String id : ids) {
-            int rowY = y;
-            addRenderableWidget(Button.builder(Component.literal("×"), b -> remove(id))
-                    .bounds(left + w - 26, rowY, 18, 16).build());
+            if (y + 16 > listTop && y < listBottom) {
+                int rowY = y;
+                addRenderableWidget(Button.builder(Component.literal("×"), b -> remove(id))
+                        .bounds(left + w - 26, rowY, 18, 16).build());
+            }
             y += 20;
         }
+    }
+
+    private int panelX() {
+        return (width - InventoryLayout.IMAGE_WIDTH) / 2;
+    }
+
+    private int panelY() {
+        return (height - InventoryLayout.IMAGE_HEIGHT) / 2;
     }
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, InventoryLayout.PANEL);
+        int x = panelX();
+        int y = panelY();
+        int w = InventoryLayout.IMAGE_WIDTH;
+        int h = InventoryLayout.IMAGE_HEIGHT;
+        graphics.fill(x - 1, y - 1, x + w + 1, y + h + 1, InventoryLayout.LINE);
+        graphics.fill(x, y, x + w, y + h, InventoryLayout.SURFACE);
+        graphics.fill(x, y + 72, x + w, y + 73, InventoryLayout.LINE_INNER);
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
-        int w = 260;
-        int left = (width - w) / 2;
-        graphics.fill(left, 20, left + w, height - 20, InventoryLayout.SURFACE);
-        graphics.fill(left, 20, left + w, 21, InventoryLayout.LINE);
-        graphics.drawCenteredString(font, title, width / 2, 12, InventoryLayout.TEXT);
+        int left = panelX();
+        int top = panelY();
+        int w = InventoryLayout.IMAGE_WIDTH;
+        graphics.drawCenteredString(font, title, left + w / 2, top + 8, InventoryLayout.TEXT);
 
-        int listTop = 74;
-        int listBottom = height - 30;
+        int listTop = top + 76;
+        int listBottom = top + InventoryLayout.IMAGE_HEIGHT - 8;
         graphics.enableScissor(left + 2, listTop, left + w - 2, listBottom);
         int y = listTop + 4 - scroll;
         for (String id : ids) {
@@ -93,17 +111,19 @@ public final class InventoryRuleEditorScreen extends Screen {
         }
         graphics.disableScissor();
         if (ids.isEmpty()) {
-            graphics.drawCenteredString(font, Component.translatable("screen.exworld.footprint_empty"), width / 2, listTop + 8, InventoryLayout.MUTED);
+            graphics.drawCenteredString(font, Component.translatable("screen.exworld.footprint_empty"), left + w / 2, listTop + 8, InventoryLayout.MUTED);
         }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int maxScroll = Math.max(0, ids.size() * 20 - (height - 104));
+        int listH = InventoryLayout.IMAGE_HEIGHT - 84;
+        int maxScroll = Math.max(0, ids.size() * 20 - listH);
         scroll = Math.max(0, Math.min(maxScroll, scroll - (int) (scrollY * 12)));
         rebuildWidgets();
         return true;
     }
+
 
     private String displayName(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);

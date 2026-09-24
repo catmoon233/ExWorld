@@ -73,7 +73,7 @@ public final class DungeonPerspective {
 
     public static boolean active() {
         Minecraft minecraft = Minecraft.getInstance();
-        return profile().dungeonView() && minecraft.player != null && minecraft.level != null
+        return !FirstPersonToggle.blocksDungeonView() && profile().dungeonView() && minecraft.player != null && minecraft.level != null
                 && !minecraft.player.isSpectator() && !minecraft.player.isDeadOrDying();
     }
 

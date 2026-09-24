@@ -25,7 +25,8 @@ public final class WorldSnapshotCompressionTestHarness {
         require(!decoded.pregenerationEnabled(), "pre-generation state changed in codec");
         require(decoded.manualGroups() && decoded.regions().size() == 1 && decoded.regions().getFirst().icon().equals("@")
                         && decoded.regions().getFirst().configured() && decoded.regions().getFirst().site().equals("赤沙港哨站")
-                        && decoded.regions().getFirst().resources().equals("盐、砂岩") && decoded.groupRevision() == 19L,
+                        && decoded.regions().getFirst().resources().equals("盐、砂岩") && !decoded.regions().getFirst().cannotLeave()
+                        && decoded.groupRevision() == 19L,
                 "manual-group settings or editor revision changed in codec");
         require(decoded.anchors().size() == 1 && decoded.anchors().getFirst().x() == 12
                 && decoded.anchors().getFirst().y() == 68 && decoded.anchors().getFirst().z() == -9

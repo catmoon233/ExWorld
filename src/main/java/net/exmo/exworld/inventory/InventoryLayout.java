@@ -1,8 +1,8 @@
 package net.exmo.exworld.inventory;
 
-/** Fixed backpack geometry: 16px item cells with a 1px gap, centered by the screen. */
+/** Fixed backpack geometry. Cells are larger than a 16px icon; inner gaps stay a 1px hairline. */
 public final class InventoryLayout {
-    public static final int ITEM = 16;
+    public static final int ITEM = 20;
     public static final int GAP = 1;
     public static final int CELL = ITEM + GAP;
     public static final int COLUMNS = StorageCore.COLUMNS;
@@ -16,10 +16,10 @@ public final class InventoryLayout {
 
     public static final int GRID_X = PAD + LEFT_WIDTH + PAD;
     public static final int GRID_Y = TAB_H + PAD;
-    public static final int HOTBAR_Y = GRID_Y + GRID_HEIGHT + 6;
+    public static final int HOTBAR_Y = GRID_Y + GRID_HEIGHT + 8;
 
     public static final int IMAGE_WIDTH = GRID_X + GRID_WIDTH + PAD;
-    public static final int IMAGE_HEIGHT = 208;
+    public static final int IMAGE_HEIGHT = 214;
 
     public static final int HELMET_X = PAD;
     public static final int HELMET_Y = GRID_Y;
@@ -52,15 +52,21 @@ public final class InventoryLayout {
     public static final int EDIT_BTN_X = ACCESSORY_BTN_X;
     public static final int EDIT_BTN_Y = ACCESSORY_BTN_Y + ACCESSORY_BTN_H + 2;
 
-    public static final int PANEL = 0xD8000000;
-    public static final int SURFACE = 0xFF141414;
-    public static final int SURFACE_INNER = 0xFF1C1C1C;
-    public static final int SLOT = 0xFF2B2B2B;
-    public static final int SLOT_LOCK = 0xFF101010;
-    public static final int LINE = 0xFF3A3A3A;
-    public static final int TEXT = 0xFFEDEDED;
-    public static final int MUTED = 0xFF8A8A8A;
-    public static final int ACCENT = 0xFFF2F2F2;
+    public static final int PANEL = 0xC8282C34;
+    public static final int SURFACE = 0xFF323844;
+    public static final int SURFACE_INNER = 0xFF3C4454;
+    public static final int SLOT = 0xFF4C5668;
+    public static final int SLOT_LOCK = 0xFF3A4250;
+    /** Outer frame: lighter gray. */
+    public static final int LINE = 0xFF9AA3B2;
+    /** Inner hairline between cells. Drawn as a 1px gap, not a double stroke. */
+    public static final int LINE_INNER = 0xFF6A7384;
+    public static final int TEXT = 0xFFF7F8FB;
+    public static final int MUTED = 0xFFC2C8D2;
+    public static final int ACCENT = 0xFFF0F3F8;
+    public static final int BUTTON = 0xFF3E4858;
+    public static final int BUTTON_HOVER = 0xFF526078;
+    public static final int TAB_IDLE = 0xFF2A303C;
 
     private InventoryLayout() {}
 }

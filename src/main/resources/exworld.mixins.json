@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "DimensionTypeMixin",
-    "InventoryMixin"
+    "InventoryMixin",
   ],
   "client": [
     "client.BlockRenderDispatcherMixin",

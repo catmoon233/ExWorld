@@ -27,6 +27,12 @@ public final class CardCollectionScreen extends Screen {
     }
 
     public static void install(CardCollectionSnapshot value) {
+        if (net.exmo.exworld.Config.decryptionMode) {
+            if (net.minecraft.client.Minecraft.getInstance().screen instanceof CardCollectionScreen) {
+                net.minecraft.client.Minecraft.getInstance().setScreen(null);
+            }
+            return;
+        }
         latest = value;
         if (net.minecraft.client.Minecraft.getInstance().screen instanceof CardCollectionScreen screen)
             screen.rebuildWidgets();

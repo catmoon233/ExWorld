@@ -1,0 +1,7 @@
+{
+  "textures": [
+    "irons_artifice:muzzle_flash/particle/muzzle_flash_triangle_1_fire",
+    "irons_artifice:muzzle_flash/particle/muzzle_flash_triangle_2_fire",
+    "irons_artifice:muzzle_flash/particle/muzzle_flash_triangle_3_fire"
+  ]
+}
