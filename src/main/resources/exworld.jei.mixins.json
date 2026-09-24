@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.exmo.exworld.mixin.compat",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "IssJeiPluginMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
