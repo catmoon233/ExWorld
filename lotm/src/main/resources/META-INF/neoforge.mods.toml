@@ -1,0 +1,63 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "GPL-3.0-or-later"
+
+[[mods]]
+modId = "lotm"
+version = "1.0-SNAPSHOT"
+displayName = "诡秘序列"
+authors = ""
+description = '''ExWorld addon: Lord of the Mysteries sequence pathways. Current test slice includes Warrior, Painter, Great Mother, Red Priest, Hanged Man, Spectator 9-8, Sun 9-8, Sea God 9-8, and Wizard 9-8.'''
+
+[[mixins]]
+config = "lotm.mixins.json"
+
+[[dependencies.lotm]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.lotm]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.22)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.lotm]]
+modId = "exworld"
+type = "required"
+versionRange = "[1.0-SNAPSHOT,)"
+
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.lotm]]
+modId = "irons_spellbooks"
+type = "required"
+versionRange = "[1.21.1,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.lotm]]
+modId = "apricityui"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.lotm]]
+modId = "voicechat"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.lotm]]
+modId = "exposure"
+type = "optional"
+versionRange = "[0,)"
+ordering = "NONE"
+side = "BOTH"

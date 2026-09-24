@@ -1,0 +1,70 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+
+// Independent 1.21.1 port of Iron's Arms 'n Artifice.
+// Scope: this directory only. Identifiers stay modId=irons_artifice, package io.redspace.irons_artifice.
+// Boundary: NeoForge 21.1.248 + Minecraft 1.21.1 + GeckoLib 4.9.2. No ExWorld, lotm, irons_lib, or GeckoLib 5.
+// Artifact: build/libs/irons_artifice-1.21.1-1.0.0.jar. GeckoLib is required at runtime and is not shaded.
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = 'CurseMaven'
+        url = 'https://www.cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+}
+
+neoForge {
+    version = neo_version
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+
+    runs {
+        client {
+            client()
+            gameDirectory = file('run')
+        }
+        server {
+            server()
+            gameDirectory = file('run-server')
+            programArgument '--nogui'
+        }
+    }
+}
+
+dependencies {
+    implementation 'curse.maven:geckolib-388172:8350073'
+}
+
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = 'UTF-8'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude '**/*.bbmodel'
+}
+
+tasks.named('jar', Jar) {
+    exclude '**/*.bbmodel'
+}
