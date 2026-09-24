@@ -3,6 +3,7 @@ package net.exmo.lotm.network;
 import net.exmo.lotm.Lotm;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
@@ -21,6 +22,17 @@ public final class SequencePayloads {
             return TYPE;
         }
     }
+    public record CastSequenceSkillPayload(String skillId) implements CustomPacketPayload {
+        public static final Type<CastSequenceSkillPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Lotm.MODID, "cast_sequence_skill"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CastSequenceSkillPayload> STREAM_CODEC =
+                StreamCodec.composite(ByteBufCodecs.STRING_UTF8, CastSequenceSkillPayload::skillId, CastSequenceSkillPayload::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
 
     public record SkillView(String id, String kind, String nameKey, String descriptionKey, String spellId, String iconItem) {}
 

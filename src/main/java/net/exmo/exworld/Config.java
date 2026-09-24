@@ -44,8 +44,14 @@ public final class Config {
 
     private static final ModConfigSpec.Builder SERVER_BUILDER = new ModConfigSpec.Builder();
     private static final ModConfigSpec.BooleanValue DECRYPTION_MODE = SERVER_BUILDER
-            .comment("Decryption mode. Written only in the server config and synced to connected clients. When enabled, the deck key and party system are hidden, the strategic map starts blank for admin-drawn regions, non-creative players stay in first person, and the backpack hides both weapon rails.")
+            .comment("Decryption mode. Written only in the server config and synced to connected clients. When enabled, the deck key and party system are hidden, the strategic map starts blank for admin-drawn regions, non-creative players can use vanilla F5 third person but not the mod god-view, and the backpack hides both weapon rails.")
             .define("gameplay.decryptionMode", false);
+    private static final ModConfigSpec.IntValue ADVENTURE_CHAT_DISTANCE = SERVER_BUILDER
+            .comment("Horizontal distance, in blocks, at which adventure-mode chat can be heard.")
+            .defineInRange("gameplay.adventureChatDistance", 64, 1, 1024);
+    private static final ModConfigSpec.IntValue ADVENTURE_CHAT_RANGE = SERVER_BUILDER
+            .comment("Vertical range, in blocks, at which adventure-mode chat can be heard.")
+            .defineInRange("gameplay.adventureChatRange", 32, 1, 384);
     private static final ModConfigSpec.ConfigValue<String> NPC_AI_URL = SERVER_BUILDER
             .comment("OpenAI-compatible chat completions URL for urban NPC dialog. Blank uses each script's fallback line.")
             .define("npc.aiUrl", "");
@@ -68,6 +74,8 @@ public final class Config {
     public static int islandSpacingMax = 300;
     public static int zoneTargetSpan = 48;
     public static boolean decryptionMode = false;
+    public static int adventureChatDistance = 64;
+    public static int adventureChatRange = 32;
     public static String npcAiUrl = "";
     public static String npcAiModel = "gpt-4o-mini";
     public static int npcAiTimeoutMs = 8000;
@@ -78,6 +86,8 @@ public final class Config {
     static void onLoad(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == SERVER_SPEC) {
             decryptionMode = DECRYPTION_MODE.get();
+            adventureChatDistance = ADVENTURE_CHAT_DISTANCE.get();
+            adventureChatRange = ADVENTURE_CHAT_RANGE.get();
             npcAiUrl = NPC_AI_URL.get();
             npcAiModel = NPC_AI_MODEL.get();
             npcAiTimeoutMs = NPC_AI_TIMEOUT.get();
@@ -105,5 +115,18 @@ public final class Config {
         if (!decryptionSyncDirty) return false;
         decryptionSyncDirty = false;
         return true;
+    }
+
+    /** Persists the nearby-chat radii and keeps the live values even if the config file cannot be saved yet. */
+    public static void setAdventureChat(int distance, int range) {
+        adventureChatDistance = distance;
+        adventureChatRange = range;
+        try {
+            ADVENTURE_CHAT_DISTANCE.set(distance);
+            ADVENTURE_CHAT_RANGE.set(range);
+            ADVENTURE_CHAT_DISTANCE.save();
+        } catch (RuntimeException ignored) {
+            // Tests and early boot have no loaded server config. The static values still apply.
+        }
     }
 }

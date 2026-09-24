@@ -6,6 +6,7 @@
   "mixins": [
     "DimensionTypeMixin",
     "InventoryMixin",
+    "PlayerSpectatorNameMixin",
   ],
   "client": [
     "client.BlockRenderDispatcherMixin",
@@ -19,7 +20,8 @@
     "client.MouseHandlerMixin",
     "client.SoundEngineMixin",
     "client.SectionOcclusionGraphMixin",
-    "client.SpellBarOverlayMixin"
+    "client.SpellBarOverlayMixin",
+    "client.GuiTabListMixin"
   ],
   "injectors": {
     "defaultRequire": 1

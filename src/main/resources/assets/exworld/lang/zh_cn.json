@@ -9,7 +9,7 @@
   "exworld.webview.failed": "WebView2 窗口创建失败",
   "message.exworld.first_person_on": "已切换至第一人称",
   "message.exworld.first_person_off": "已切换至上帝视角",
-  "message.exworld.perspective_locked": "非创造模式不能切换本模组视角",
+  "message.exworld.perspective_locked": "解密模式下按 F5 切换第三人称，上帝视角仅创造模式可用",
   "message.exworld.region_locked": "非创造模式不能离开这个区域",
   "party.exworld.disabled": "解密模式已关闭队伍系统",
   "screen.exworld.map_cursor": "%s  X %s  Z %s",
@@ -594,5 +594,15 @@
    "npc.exworld.gave_wand": "已给予编辑杖",
    "npc.exworld.copied": "已复制为 %s，首次生成时重新锚定",
    "npc.exworld.despawned": "已清除 %s 个实体",
-   "npc.exworld.points": "%s 个路点"
+   "npc.exworld.points": "%s 个路点",
+  "screen.exworld.nearby_chat": "附近聊天",
+  "screen.exworld.nearby_distance": "距离",
+  "screen.exworld.nearby_range": "范围",
+  "screen.exworld.nearby_hint": "冒险发言只传给这个距离和垂直范围内的玩家。冒险模式听不到旁观者。",
+  "screen.exworld.nearby_save": "保存",
+  "screen.exworld.nearby_saved": "已保存附近聊天：距离 %s，范围 %s",
+  "screen.exworld.nearby_denied": "只有创造模式或管理员可以配置附近聊天",
+  "command.exworld.help.header": "ExWorld 指令指南。输入 /exworld help <主题>，或 /exworld help all",
+  "command.exworld.help.topics": "主题：%s",
+  "command.exworld.help.unknown": "没有这个主题：%s"
  }

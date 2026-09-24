@@ -20,6 +20,7 @@ public final class SequenceSystem {
         NeoForge.EVENT_BUS.register(SequenceCommands.class);
         NeoForge.EVENT_BUS.register(PassiveDispatcher.class);
         NeoForge.EVENT_BUS.register(SequenceSpellOwnership.class);
+        GuimiSequenceBridge.register();
         NeoForge.EVENT_BUS.addListener(SequenceSystem::login);
         NeoForge.EVENT_BUS.addListener(SequenceSystem::copied);
         NeoForge.EVENT_BUS.addListener(SequenceSystem::respawn);
@@ -35,9 +36,11 @@ public final class SequenceSystem {
 
     private static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        GuimiSequenceBridge.reconcile(player);
         SequenceService.reapply(player);
         SequenceNetwork.sync(player, false);
     }
+
     private static void copied(PlayerEvent.Clone event) {
         PlayerSequenceData from = event.getOriginal().getData(SequenceAttachments.SEQUENCE.get());
         PlayerSequenceData to = event.getEntity().getData(SequenceAttachments.SEQUENCE.get());

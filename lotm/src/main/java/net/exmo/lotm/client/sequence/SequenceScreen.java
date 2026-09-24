@@ -247,6 +247,14 @@ public final class SequenceScreen extends Screen {
 
 
     private void drawSkillIcon(GuiGraphics graphics, SequencePayloads.SkillView skill, int x, int y) {
+        if (skill.iconItem().startsWith("tex:")) {
+            try {
+                graphics.blit(ResourceLocation.parse(skill.iconItem().substring(4)), x, y, 0, 0, 16, 16, 16, 16);
+            } catch (RuntimeException ignored) {
+                return;
+            }
+            return;
+        }
         if (!skill.spellId().isBlank()) {
             AbstractSpell spell = SpellRegistry.getSpell(ResourceLocation.parse(skill.spellId()));
             if (spell != null && spell != SpellRegistry.none()) {
@@ -320,10 +328,13 @@ public final class SequenceScreen extends Screen {
                 if (iy + SKILL > skillDescY() - 4) break;
 
                 if (hit(mouseX, mouseY, ix, iy, SKILL, SKILL)) {
-                    selectedSkill = entry.skills().get(i).id();
+                    SequencePayloads.SkillView skill = entry.skills().get(i);
+                    selectedSkill = skill.id();
                     skillScroll = 0;
                     playClick();
-
+                    if (hasShiftDown() && "active".equals(skill.kind())) {
+                        PacketDistributor.sendToServer(new SequencePayloads.CastSequenceSkillPayload(skill.id()));
+                    }
                     return true;
                 }
             }

@@ -40,6 +40,7 @@ public final class Exworld {
         PlayerProgressSystem.registerEvents();
         ShipSystem.registerEvents();
         InventorySystem.registerEvents();
+        net.exmo.exworld.social.SocialSystem.register();
         net.exmo.exworld.npc.NpcSystem.register(modBus);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldMapClient.register(modBus);

@@ -16,6 +16,12 @@ public final class SequenceCommands {
 
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
+        net.exmo.exworld.social.ExworldHelp.topic("sequence", "序列",
+                net.exmo.exworld.social.ExworldHelp.line("/exworld sequence open", "打开序列界面"),
+                net.exmo.exworld.social.ExworldHelp.line("/exworld sequence get [targets]", "查看序列"),
+                net.exmo.exworld.social.ExworldHelp.line("/exworld sequence pathways", "列出途径"),
+                net.exmo.exworld.social.ExworldHelp.line("/exworld sequence set <targets> <pathway> <rank>", "设置序列。需要 2 级权限"),
+                net.exmo.exworld.social.ExworldHelp.line("/exworld sequence clear <targets>", "清除序列。需要 2 级权限"));
         event.getDispatcher().register(Commands.literal("exworld").then(Commands.literal("sequence")
                 .then(Commands.literal("set").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("targets", EntityArgument.players())

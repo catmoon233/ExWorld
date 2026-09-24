@@ -17,6 +17,12 @@ public final class SequenceNetwork {
                 (payload, context) -> {
                     if (context.player() instanceof ServerPlayer player) sync(player, true);
                 });
+        registrar.playToServer(SequencePayloads.CastSequenceSkillPayload.TYPE, SequencePayloads.CastSequenceSkillPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        GuimiSequenceBridge.cast(player, payload.skillId());
+                    }
+                }));
         registrar.playToClient(SequencePayloads.SequenceSnapshotPayload.TYPE, SequencePayloads.SequenceSnapshotPayload.STREAM_CODEC,
                 (payload, context) -> SequenceClientHooks.receive(payload));
     }

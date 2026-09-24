@@ -44,16 +44,48 @@ tasks.withType(ProcessResources).configureEach {
     filteringCharset = 'UTF-8'
 }
 sourceSets {
+    guimi {
+        java.srcDir '参考mod/Lord-of-the-Mysteries-Mod-main/src/main/java'
+        resources.srcDir '参考mod/Lord-of-the-Mysteries-Mod-main/src/main/resources'
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
     lotm {
         java.srcDir 'lotm/src/main/java'
         resources.srcDir 'lotm/src/main/resources'
         compileClasspath += sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.runtimeClasspath
     }
- }
- // Iron's Artifice builds from its own Gradle root at irons_artifice/. It is not an ExWorld source set.
- sourceSets.lotm.compileClasspath += sourceSets.main.output
- sourceSets.lotm.runtimeClasspath += sourceSets.main.output
+    exkeys {
+        java.srcDir 'exkeys/src/main/java'
+        resources.srcDir 'exkeys/src/main/resources'
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+// guimi_mod is lotm's required predecessor. It is compiled from the reference tree, not bundled into ExWorld.
+sourceSets.lotm.compileClasspath += sourceSets.main.output
+sourceSets.lotm.compileClasspath += sourceSets.guimi.output
+sourceSets.lotm.runtimeClasspath += sourceSets.main.output
+def guimiMetadataDir = layout.buildDirectory.dir('generated/guimi-metadata')
+def generateGuimiMetadata = tasks.register('generateGuimiMetadata', ProcessResources) {
+    def replaceProperties = [
+            minecraft_version      : '1.21.1',
+            minecraft_version_range: '[1.21.1]',
+            neo_version            : '21.1.233',
+            loader_version_range   : '[1,)',
+            mod_id                 : 'guimi_mod',
+            mod_name               : 'Guimimod',
+            mod_license            : 'All Rights Reserved',
+            mod_version            : '0.0.1',
+    ]
+    inputs.properties replaceProperties
+    from('参考mod/Lord-of-the-Mysteries-Mod-main/src/main/templates')
+    into guimiMetadataDir
+    expand replaceProperties
+}
+sourceSets.guimi.resources.srcDir(guimiMetadataDir)
+tasks.named('processGuimiResources').configure { dependsOn(generateGuimiMetadata) }
 
 
 neoForge {
@@ -67,8 +99,14 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
+        guimi_mod {
+            sourceSet(sourceSets.guimi)
+        }
         lotm {
             sourceSet(sourceSets.lotm)
+        }
+        exkeys {
+            sourceSet(sourceSets.exkeys)
         }
     }
 
@@ -98,7 +136,7 @@ neoForge {
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
-            loadedMods.set([project.neoForge.mods.getByName(project.mod_id), project.neoForge.mods.lotm])
+            loadedMods.set([project.neoForge.mods.getByName(project.mod_id), project.neoForge.mods.guimi_mod, project.neoForge.mods.lotm, project.neoForge.mods.exkeys])
         }
     }
 }
@@ -112,6 +150,8 @@ sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 
 sourceSets.test.compileClasspath += sourceSets.lotm.output
 sourceSets.test.runtimeClasspath += sourceSets.lotm.output
+sourceSets.test.compileClasspath += sourceSets.exkeys.output
+sourceSets.test.runtimeClasspath += sourceSets.exkeys.output
 
 dependencies {
     implementation files("libs/exmodifier-1.0-SNAPSHOT.jar")
@@ -183,7 +223,7 @@ tasks.register('verifyNoDuplicateSodium') {
  }
  tasks.named('prepareClientRun') {
      dependsOn tasks.named('verifyNoDuplicateSodium')
-     dependsOn 'compileLotmJava', 'processLotmResources', 'syncPhoneApricity'
+    dependsOn 'compileLotmJava', 'processLotmResources', 'syncPhoneApricity', 'compileExkeysJava', 'processExkeysResources'
  }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -288,12 +328,52 @@ tasks.register('lotmJar', Jar) {
     archiveBaseName = 'lotm'
     from sourceSets.lotm.output
 }
+tasks.register('exkeysJar', Jar) {
+    archiveBaseName = 'exkeys'
+    from sourceSets.exkeys.output
+}
+
+tasks.register('guimiJar', Jar) {
+    group = 'build'
+    description = 'Packages guimi_mod.'
+    archiveBaseName = 'guimi_mod'
+    archiveVersion = '0.0.1'
+    from sourceSets.guimi.output
+}
+tasks.named('lotmJar') {
+    group = 'build'
+    description = 'Packages lotm.'
+}
+tasks.named('exkeysJar') {
+    group = 'build'
+    description = 'Packages exkeys.'
+}
+
+def exportedMods = layout.buildDirectory.dir('export')
+tasks.register('exportMods', Sync) {
+    group = 'build'
+    description = 'Builds exworld, guimi_mod, lotm, and exkeys, then copies the jars into build/export.'
+    into exportedMods
+    from(tasks.named('jar'))
+    from(tasks.named('guimiJar'))
+    from(tasks.named('lotmJar'))
+    from(tasks.named('exkeysJar'))
+}
+
+tasks.named('prepareServerRun') {
+    dependsOn 'compileExkeysJava', 'processExkeysResources'
+}
 
 
 tasks.register('sequenceRankTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.sequence.SequenceRankHarness'
+}
+tasks.register('guimiPathwayTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.lotm.sequence.GuimiPathwaysHarness'
 }
 
 tasks.register('cameraZoomTest', JavaExec) {
@@ -537,4 +617,18 @@ tasks.register('webview2Smoke', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.client.webview.WebView2Smoke'
     args '--window'
+}
+
+def exkeysPolicyTestClasses = layout.buildDirectory.dir('exkeys-policy-test')
+tasks.register('compileExkeysPolicyTest', JavaCompile) {
+    dependsOn 'compileExkeysJava'
+    source = files('src/test/java/net/exmo/exkeys/KeyPolicyTestHarness.java')
+    classpath = sourceSets.exkeys.compileClasspath + sourceSets.exkeys.output
+    destinationDirectory = exkeysPolicyTestClasses
+    options.encoding = 'UTF-8'
+}
+tasks.register('exkeysPolicyTest', JavaExec) {
+    dependsOn 'compileExkeysPolicyTest'
+    classpath = sourceSets.exkeys.runtimeClasspath + sourceSets.exkeys.output + files(exkeysPolicyTestClasses)
+    mainClass = 'net.exmo.exkeys.KeyPolicyTestHarness'
 }

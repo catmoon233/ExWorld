@@ -57,6 +57,11 @@ public final class WorldNetwork {
                 (payload, context) -> SubtitleHud.enqueue(payload));
         registrar.playToClient(DecryptionModePayload.TYPE, DecryptionModePayload.STREAM_CODEC,
                 (payload, context) -> DecryptionClient.apply(payload.enabled()));
+        registrar.playToClient(NearbyChatOpenPayload.TYPE, NearbyChatOpenPayload.STREAM_CODEC,
+                (payload, context) -> net.exmo.exworld.client.social.NearbyChatClient.open(payload.distance(), payload.range()));
+        registrar.playToServer(NearbyChatUpdatePayload.TYPE, NearbyChatUpdatePayload.STREAM_CODEC, (payload, context) -> {
+            if (context.player() instanceof ServerPlayer player) net.exmo.exworld.social.NearbyChat.save(player, payload.distance(), payload.range());
+        });
     }
 
     public static void sendSnapshot(ServerPlayer player, WorldSnapshot snapshot) {
@@ -73,6 +78,10 @@ public final class WorldNetwork {
 
     public static void sendDecryptionMode(ServerPlayer player, boolean enabled) {
         PacketDistributor.sendToPlayer(player, new DecryptionModePayload(enabled));
+    }
+
+    public static void sendNearbyChatOpen(ServerPlayer player, int distance, int range) {
+        PacketDistributor.sendToPlayer(player, new NearbyChatOpenPayload(distance, range));
     }
 
     public static void sendActiveChunkGroup(ServerPlayer player, net.exmo.exworld.world.model.ChunkGroupShape shape) {

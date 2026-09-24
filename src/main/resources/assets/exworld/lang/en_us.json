@@ -9,7 +9,7 @@
   "exworld.webview.failed": "Could not create the WebView2 window",
   "message.exworld.first_person_on": "Switched to first person",
   "message.exworld.first_person_off": "Switched to god view",
-  "message.exworld.perspective_locked": "Only creative mode can switch this mod's camera",
+  "message.exworld.perspective_locked": "Press F5 for third person in decryption mode. God view is creative-only.",
   "message.exworld.region_locked": "Non-creative players cannot leave this region",
   "party.exworld.disabled": "Decryption mode disables the party system",
   "screen.exworld.map_cursor": "%s  X %s  Z %s",
@@ -594,5 +594,15 @@
    "npc.exworld.gave_wand": "Gave the editor wand",
    "npc.exworld.copied": "Copied as %s; the first spawn re-anchors it",
    "npc.exworld.despawned": "Cleared %s entities",
-   "npc.exworld.points": "%s waypoints"
+   "npc.exworld.points": "%s waypoints",
+  "screen.exworld.nearby_chat": "Nearby Chat",
+  "screen.exworld.nearby_distance": "Distance",
+  "screen.exworld.nearby_range": "Range",
+  "screen.exworld.nearby_hint": "Adventure speech reaches only players inside this distance and vertical range. Adventure cannot hear spectators.",
+  "screen.exworld.nearby_save": "Save",
+  "screen.exworld.nearby_saved": "Saved nearby chat: distance %s, range %s",
+  "screen.exworld.nearby_denied": "Only creative mode or an admin can configure nearby chat",
+  "command.exworld.help.header": "ExWorld command guide. Use /exworld help <topic>, or /exworld help all",
+  "command.exworld.help.topics": "Topics: %s",
+  "command.exworld.help.unknown": "Unknown topic: %s"
  }

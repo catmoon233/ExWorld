@@ -58,7 +58,7 @@ public final class SequenceService {
     public static List<SequenceSkill> ownedSpells(Player player) {
         List<SequenceSkill> spells = new ArrayList<>();
         for (SequenceSkill skill : unlockedSkills(player)) {
-            if (skill.kind() == SkillKind.ACTIVE) spells.add(skill);
+            if (skill.kind() == SkillKind.ACTIVE && isSpell(skill.ref())) spells.add(skill);
         }
         return spells;
     }
@@ -67,6 +67,7 @@ public final class SequenceService {
         if (player == null || pathway == null || rank == null || pathway.byRank(rank) == null) return false;
         data(player).set(pathway.id(), rank);
         reapply(player);
+        GuimiSequenceBridge.push(player);
         SequenceNetwork.sync(player, false);
         return true;
     }
@@ -75,6 +76,7 @@ public final class SequenceService {
         if (player == null) return;
         data(player).clear();
         reapply(player);
+        GuimiSequenceBridge.push(player);
         SequenceNetwork.sync(player, false);
     }
 
@@ -125,5 +127,9 @@ public final class SequenceService {
         String path = "sequence/" + sequenceId.getNamespace() + "." + sequenceId.getPath().replace('/', '.')
                 + "/" + attribute.getNamespace() + "." + attribute.getPath().replace('/', '.');
         return ResourceLocation.fromNamespaceAndPath(Exworld.MODID, path);
+    }
+
+    private static boolean isSpell(ResourceLocation id) {
+        return id != null && "irons_spellbooks".equals(id.getNamespace());
     }
 }

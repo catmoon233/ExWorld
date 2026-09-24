@@ -65,6 +65,10 @@ public final class ExModifierTooltipModelTestHarness {
             ExModifierTooltip.SlotSection emptySlots = ExModifierTooltip.slotSection(
                     null, ExModifierCatalog.current(), key -> key);
             if (emptySlots.total() != 0) throw new AssertionError("null stack must have no slot section");
+            ExModifierTooltip.SlotSection noItemSlots = ExModifierTooltip.fromUnlocked(List.of(), key -> key);
+            if (noItemSlots.total() != 0 || noItemSlots.unlocked() != 0) {
+                throw new AssertionError("catalog slots must not appear on an item with none unlocked");
+            }
 
             List<ExModifierTooltip.SuitSection> sections = ExModifierTooltip.suits(
                     List.of(view), List.of(view), ExModifierCatalog.current(),

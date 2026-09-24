@@ -15,6 +15,9 @@ import net.minecraft.util.Mth;
  * Pressing the toggle starts a short easing transition that swoops the camera between the god-view pose and the
  * player's eyes, then either installs the vanilla first-person profile or returns to the remembered god-view pose.
  * The player-facing state change is announced with an action-bar message.</p>
+ *
+ * <p>Decryption mode keeps the god-view opt-in for creative players, but does not pin the vanilla camera. F5 can
+ * open third person.</p>
  */
 public final class FirstPersonToggle {
     public static final ResourceLocation OWNER = ResourceLocation.fromNamespaceAndPath(Exworld.MODID, "first_person");
@@ -32,6 +35,9 @@ public final class FirstPersonToggle {
     private static float savedGodPitch = CameraProfile.EXPLORATION.pitch();
     private static float savedGodDistance = CameraProfile.EXPLORATION.distance();
 
+    private static boolean creativeGodView;
+    private static boolean decryptionLatched;
+
     private FirstPersonToggle() {}
 
     public static boolean firstPerson() { return firstPerson; }
@@ -46,36 +52,62 @@ public final class FirstPersonToggle {
                 }
                 return;
             }
-            creativeGodView = firstPerson;
+            setCreativeGodView(!creativeGodView);
+            return;
         }
         toggleInternal();
     }
 
-    /** Decryption mode keeps non-creative players, and creative players who have not opted in, out of the god view. */
+    /** Decryption mode blocks the mod god-view unless a creative player opted in. Vanilla F5 third person stays available. */
     public static boolean blocksDungeonView() {
         return net.exmo.exworld.Config.decryptionMode && !creativeGodViewAllowed();
     }
 
     public static void enforceDecryption() {
         if (!net.exmo.exworld.Config.decryptionMode) {
-            creativeGodView = false;
+            if (decryptionLatched) {
+                decryptionLatched = false;
+                creativeGodView = false;
+                firstPerson = false;
+                transitioning = false;
+                DungeonPerspective.clearOverride(OWNER);
+            }
             return;
         }
-        if (creativeGodViewAllowed()) return;
+        if (creativeGodViewAllowed()) {
+            decryptionLatched = true;
+            return;
+        }
+        boolean entering = !decryptionLatched;
         creativeGodView = false;
-        firstPerson = true;
+        firstPerson = false;
         transitioning = false;
         DungeonPerspective.setOverride(OWNER, CameraProfile.VANILLA);
+        if (!entering) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player != null) minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+        if (minecraft.player == null) return;
+        decryptionLatched = true;
+        minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+    }
+
+    private static void setCreativeGodView(boolean enabled) {
+        creativeGodView = enabled;
+        decryptionLatched = true;
+        firstPerson = false;
+        transitioning = false;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (enabled) DungeonPerspective.clearOverride(OWNER);
+        else DungeonPerspective.setOverride(OWNER, CameraProfile.VANILLA);
+        if (minecraft.player == null) return;
+        minecraft.options.setCameraType(enabled ? CameraType.THIRD_PERSON_BACK : CameraType.FIRST_PERSON);
+        minecraft.player.displayClientMessage(Component.translatable(
+                enabled ? "message.exworld.first_person_off" : "message.exworld.first_person_on"), true);
     }
 
     private static boolean creativeGodViewAllowed() {
         Minecraft minecraft = Minecraft.getInstance();
         return creativeGodView && minecraft.player != null && minecraft.player.isCreative();
     }
-
-    private static boolean creativeGodView;
 
     private static void toggleInternal() {
         Minecraft minecraft = Minecraft.getInstance();

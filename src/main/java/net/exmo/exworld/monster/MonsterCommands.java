@@ -13,7 +13,7 @@ import java.io.IOException;
 public final class MonsterCommands {
     private MonsterCommands() {}
     public static void register(com.mojang.brigadier.CommandDispatcher<CommandSourceStack> dispatcher) {
-        var monsters = Commands.literal("monsters");
+        var monsters = Commands.literal("monsters").requires(source -> source.hasPermission(2));
         monsters.then(Commands.literal("packages").executes(context -> list(context.getSource())));
         monsters.then(Commands.literal("reload").executes(context -> reload(context.getSource())));
         monsters.then(Commands.literal("edit").then(Commands.argument("package", StringArgumentType.word()).executes(context -> edit(context.getSource(), StringArgumentType.getString(context, "package")))));
@@ -22,7 +22,7 @@ public final class MonsterCommands {
         monsters.then(Commands.literal("move").then(Commands.argument("package", StringArgumentType.word()).then(Commands.argument("index", IntegerArgumentType.integer(0)).executes(context -> move(context.getSource(), StringArgumentType.getString(context, "package"), IntegerArgumentType.getInteger(context, "index"))))));
         monsters.then(Commands.literal("import").then(Commands.argument("file", StringArgumentType.word()).executes(context -> importPackage(context.getSource(), StringArgumentType.getString(context, "file")))));
         monsters.then(Commands.literal("export").then(Commands.argument("package", StringArgumentType.word()).executes(context -> exportPackage(context.getSource(), StringArgumentType.getString(context, "package")))));
-        dispatcher.register(Commands.literal("exworld").requires(source -> source.hasPermission(2)).then(monsters));
+        dispatcher.register(Commands.literal("exworld").then(monsters));
     }
     private static MonsterProfileRegistry registry(CommandSourceStack source) { return MonsterProfileRegistry.active().orElseThrow(() -> new IllegalStateException("monster registry is not ready")); }
     private static int list(CommandSourceStack source) { MonsterProfileRegistry registry=registry(source);source.sendSuccess(()->Component.literal("怪物数据包："+String.join("、",registry.enabled())),false);for(var pack:registry.packages())source.sendSuccess(()->Component.literal(" - "+pack.id()+"  "+pack.displayName()+" "+pack.version()+(pack.valid()?"":" 错误："+pack.error())),false);if(source.getEntity() instanceof ServerPlayer player)net.exmo.exworld.network.MonsterNetwork.sendPackages(player);return 1; }

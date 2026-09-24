@@ -70,19 +70,23 @@ public final class ExModifierTooltip {
 
     public static SlotSection slotSection(ItemStack stack, ExModifierCatalog catalog, Function<String, String> translate) {
         if (stack == null || stack.isEmpty()) return new SlotSection(0, 0, List.of());
-        ExModifierCatalog source = catalog == null ? ExModifierCatalog.EMPTY : catalog;
+        return fromUnlocked(ExModifierApi.unlockedSlots(stack).slots(), translate);
+    }
+
+    /** Slot pips follow the item's own unlocked slots, never the global slot catalog. */
+    public static SlotSection fromUnlocked(List<ResourceLocation> unlockedIds, Function<String, String> translate) {
+        if (unlockedIds == null || unlockedIds.isEmpty()) return new SlotSection(0, 0, List.of());
         Function<String, String> tr = translate == null ? key -> key : translate;
-        List<ResourceLocation> unlockedIds = ExModifierApi.unlockedSlots(stack).slots();
-        int total = source.slots().size();
-        if (total == 0 && unlockedIds.isEmpty()) return new SlotSection(0, 0, List.of());
         List<String> names = new ArrayList<>(unlockedIds.size());
         for (ResourceLocation id : unlockedIds) {
-            String key = "tooltip.exmodifier.slot." + id.getPath();
+            if (id == null) continue;
+            String key = "slot.exmodifier." + id.getPath();
             String name = tr.apply(key);
             if (name == null || name.isBlank() || name.equals(key)) name = pretty(id.getPath());
             names.add(name);
         }
-        return new SlotSection(Math.max(total, unlockedIds.size()), unlockedIds.size(), names);
+        if (names.isEmpty()) return new SlotSection(0, 0, List.of());
+        return new SlotSection(names.size(), names.size(), names);
     }
 
     public static List<Chip> chips(
