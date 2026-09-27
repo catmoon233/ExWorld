@@ -23,6 +23,8 @@ import java.util.Map;
 @EventBusSubscriber(modid = IronsArtifice.MODID, value = Dist.CLIENT)
 public final class MuzzleFlashEmitter {
     private static final Map<Integer, ClientboundMuzzleFlashPacket> PENDING = new HashMap<>();
+    private static final float BARREL_CLEARANCE = 0.55F;
+    private static final double MIN_CAMERA_FORWARD_DISTANCE = 1.05;
 
     public static void enqueue(ClientboundMuzzleFlashPacket packet) {
         if (Minecraft.getInstance().level == null || Minecraft.getInstance().player == null) {
@@ -32,6 +34,9 @@ public final class MuzzleFlashEmitter {
     }
 
     public static void tryEmit(int entityId, PoseStack poseStack) {
+        if (isShadowPass() || !PENDING.containsKey(entityId)) {
+            return;
+        }
         ClientboundMuzzleFlashPacket packet = PENDING.remove(entityId);
         if (packet == null) {
             return;
@@ -41,6 +46,16 @@ public final class MuzzleFlashEmitter {
             return;
         }
         spawn(level, packet, worldPosFromBone(poseStack, packet.extraForwardOffset()));
+    }
+
+    private static boolean isShadowPass() {
+        try {
+            Class<?> state = Class.forName("net.irisshaders.iris.shadows.ShadowRenderingState");
+            Object rendering = state.getMethod("areShadowsCurrentlyBeingRendered").invoke(null);
+            return rendering instanceof Boolean shadow && shadow;
+        } catch (ReflectiveOperationException ignored) {
+            return false;
+        }
     }
 
     @SubscribeEvent
@@ -64,8 +79,19 @@ public final class MuzzleFlashEmitter {
             forward.normalize();
         }
         Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        return camera.add(origin.x, origin.y, origin.z)
-                .add(forward.x * extraForwardOffset, forward.y * extraForwardOffset, forward.z * extraForwardOffset);
+        float push = extraForwardOffset + BARREL_CLEARANCE;
+        Vec3 relative = new Vec3(origin.x, origin.y, origin.z)
+                .add(forward.x * push, forward.y * push, forward.z * push);
+        Vector3f cameraForward = new Vector3f(Minecraft.getInstance().gameRenderer.getMainCamera().getLookVector());
+        if (cameraForward.lengthSquared() > 1.0e-6f) {
+            cameraForward.normalize();
+            double forwardDistance = relative.x * cameraForward.x + relative.y * cameraForward.y + relative.z * cameraForward.z;
+            if (forwardDistance < MIN_CAMERA_FORWARD_DISTANCE) {
+                double correction = MIN_CAMERA_FORWARD_DISTANCE - forwardDistance;
+                relative = relative.add(cameraForward.x * correction, cameraForward.y * correction, cameraForward.z * correction);
+            }
+        }
+        return camera.add(relative);
     }
 
     private static void spawn(ClientLevel level, ClientboundMuzzleFlashPacket msg, Vec3 pos) {

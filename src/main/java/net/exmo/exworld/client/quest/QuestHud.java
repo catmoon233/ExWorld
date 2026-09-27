@@ -28,19 +28,23 @@ public final class QuestHud {
         if (BattleClient.active() || Minecraft.getInstance().screen != null) return;
         QuestSnapshot value = shownQuest();
         if (value == null) return;
+        int y = net.exmo.exworld.mystery.client.MysteryClient.inGame()
+                ? net.exmo.exworld.mystery.client.MysteryClient.ordinaryTaskY() : Y;
         var font = Minecraft.getInstance().font;
-        JournalGuiTextures.panel(graphics, X, Y, WIDTH, HEIGHT);
+        JournalGuiTextures.panel(graphics, X, y, WIDTH, HEIGHT);
         String title = "✒ " + net.minecraft.network.chat.Component.translatable(value.titleKey()).getString();
-        graphics.drawString(font, font.plainSubstrByWidth(title, WIDTH - 18, true), X + 9, Y + 10, 0xFF4B351C, true);
+        graphics.drawString(font, font.plainSubstrByWidth(title, WIDTH - 18, true), X + 9, y + 10, 0xFF4B351C, true);
         if (!value.objectives().isEmpty()) {
             var objective = value.objectives().getFirst();
             String progress = "□ " + objective.current() + "/" + objective.required() + "  " + shortId(objective.target());
-            graphics.drawString(font, font.plainSubstrByWidth(progress, WIDTH - 18, true), X + 9, Y + 27, 0xFFFFE1A0, true);
+            graphics.drawString(font, font.plainSubstrByWidth(progress, WIDTH - 18, true), X + 9, y + 27, 0xFFFFE1A0, true);
         }
     }
 
     public static boolean click(double x, double y) {
-        if (BattleClient.active() || FirstPersonToggle.firstPerson() || x < X || x > X + WIDTH || y < Y || y > Y + HEIGHT) return false;
+        int top = net.exmo.exworld.mystery.client.MysteryClient.inGame()
+                ? net.exmo.exworld.mystery.client.MysteryClient.ordinaryTaskY() : Y;
+        if (BattleClient.active() || FirstPersonToggle.firstPerson() || x < X || x > X + WIDTH || y < top || y > top + HEIGHT) return false;
         QuestSnapshot value = shownQuest();
         if (value == null) return false;
         QuestClient.navigate(value.id());

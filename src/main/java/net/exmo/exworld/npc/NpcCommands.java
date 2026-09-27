@@ -1,6 +1,7 @@
 package net.exmo.exworld.npc;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.exmo.exworld.content.ExWorldContent;
 import net.exmo.exworld.npc.data.NpcCatalog;
@@ -25,7 +26,7 @@ public final class NpcCommands {
     public static void register(RegisterCommandsEvent event) {
         var npc = Commands.literal("npc").requires(source -> source.hasPermission(2));
         event.getDispatcher().register(Commands.literal("exworld").then(npc
-                .then(Commands.literal("create").then(Commands.argument("id", StringArgumentType.word()).executes(context -> {
+                .then(Commands.literal("create").then(Commands.argument("id", TokenArgument.token()).executes(context -> {
                     String id = StringArgumentType.getString(context, "id");
                     if (!id.matches("[A-Za-z0-9_.:-]{1,64}")) {
                         context.getSource().sendFailure(Component.translatable("npc.exworld.bad_id"));
@@ -40,7 +41,7 @@ public final class NpcCommands {
                     context.getSource().sendSuccess(() -> Component.translatable("npc.exworld.created", id), true);
                     return 1;
                 })))
-                .then(Commands.literal("spawn").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(context -> {
+                .then(Commands.literal("spawn").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(context -> {
                     if (!(context.getSource().getEntity() instanceof ServerPlayer player)) return 0;
                     String id = StringArgumentType.getString(context, "id");
                     UrbanNpc spawned = NpcSystem.spawn(player, id);
@@ -51,13 +52,13 @@ public final class NpcCommands {
                     context.getSource().sendSuccess(() -> Component.translatable("npc.exworld.spawned", id), true);
                     return 1;
                 })))
-                .then(Commands.literal("edit").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(context -> open(context, false))))
-                .then(Commands.literal("blueprint").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(context -> open(context, true))))
-                .then(Commands.literal("goto").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(NpcCommands::go)))
-                 .then(Commands.literal("copy").then(Commands.argument("from", StringArgumentType.word()).suggests(IDS)
-                         .then(Commands.argument("to", StringArgumentType.word()).executes(NpcCommands::copy))))
-                 .then(Commands.literal("despawn").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(NpcCommands::despawn)))
-                 .then(Commands.literal("remove").then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(context -> {
+                .then(Commands.literal("edit").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(context -> open(context, false))))
+                .then(Commands.literal("blueprint").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(context -> open(context, true))))
+                .then(Commands.literal("goto").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(NpcCommands::go)))
+                 .then(Commands.literal("copy").then(Commands.argument("from", TokenArgument.token()).suggests(IDS)
+                         .then(Commands.argument("to", TokenArgument.token()).executes(NpcCommands::copy))))
+                 .then(Commands.literal("despawn").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(NpcCommands::despawn)))
+                 .then(Commands.literal("remove").then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(context -> {
                      String id = StringArgumentType.getString(context, "id");
                      NpcCatalog catalog = NpcCatalog.get(context.getSource().getServer());
                      if (catalog.document(id).isEmpty()) {
@@ -74,7 +75,7 @@ public final class NpcCommands {
                      return 1;
                  })))
                 .then(Commands.literal("wand").executes(context -> give(context, ""))
-                        .then(Commands.argument("id", StringArgumentType.word()).suggests(IDS).executes(context -> give(context, StringArgumentType.getString(context, "id")))))
+                        .then(Commands.argument("id", TokenArgument.token()).suggests(IDS).executes(context -> give(context, StringArgumentType.getString(context, "id")))))
                 .then(Commands.literal("list").executes(context -> {
                     String ids = String.join(", ", NpcCatalog.get(context.getSource().getServer()).ids());
                     context.getSource().sendSuccess(() -> Component.literal(ids.isBlank() ? "-" : ids), false);

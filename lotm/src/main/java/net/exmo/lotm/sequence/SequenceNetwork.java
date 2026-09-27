@@ -1,5 +1,6 @@
 package net.exmo.lotm.sequence;
 
+import net.exmo.lotm.guimi.GuimiIntegration;
 import net.exmo.lotm.network.SequencePayloads;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,7 +21,7 @@ public final class SequenceNetwork {
         registrar.playToServer(SequencePayloads.CastSequenceSkillPayload.TYPE, SequencePayloads.CastSequenceSkillPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (context.player() instanceof ServerPlayer player) {
-                        GuimiSequenceBridge.cast(player, payload.skillId());
+                        GuimiIntegration.cast(player, payload.skillId());
                     }
                 }));
         registrar.playToClient(SequencePayloads.SequenceSnapshotPayload.TYPE, SequencePayloads.SequenceSnapshotPayload.STREAM_CODEC,

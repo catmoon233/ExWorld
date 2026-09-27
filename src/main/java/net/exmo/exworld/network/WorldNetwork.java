@@ -20,7 +20,9 @@ public final class WorldNetwork {
         QuestNetwork.register(registrar);
         ShipNetwork.register(registrar);
         net.exmo.exworld.inventory.InventoryNetwork.register(registrar);
+        net.exmo.exworld.character.CharacterNetwork.register(registrar);
         net.exmo.exworld.npc.network.NpcNetwork.register(registrar);
+        net.exmo.exworld.mystery.MysteryNetwork.register(registrar);
         registrar.playToServer(RequestWorldMapPayload.TYPE, RequestWorldMapPayload.STREAM_CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) sendSnapshot(player, WorldSystem.snapshot(player));
         });
@@ -37,11 +39,11 @@ public final class WorldNetwork {
             if (context.player() instanceof ServerPlayer player) WorldSystem.saveGroupEdit(player, payload);
         });
         registrar.playToClient(WorldSnapshotPayload.TYPE, WorldSnapshotPayload.STREAM_CODEC,
-                (payload, context) -> WorldMapClient.receive(payload.snapshot()));
+                (payload, context) -> context.enqueueWork(() -> WorldMapClient.receive(payload.snapshot())));
         registrar.playToClient(WorldGroupEditorPayload.TYPE, WorldGroupEditorPayload.STREAM_CODEC,
-                (payload, context) -> WorldMapClient.receiveGroupEditor(payload));
+                (payload, context) -> context.enqueueWork(() -> WorldMapClient.receiveGroupEditor(payload)));
         registrar.playToClient(ActiveChunkGroupPayload.TYPE, ActiveChunkGroupPayload.STREAM_CODEC,
-                (payload, context) -> ClientChunkGroupState.install(payload.shape(), payload.archipelago()));
+                (payload, context) -> context.enqueueWork(() -> ClientChunkGroupState.install(payload.shape(), payload.archipelago())));
         registrar.playToClient(AnchorSnapshotPayload.TYPE, AnchorSnapshotPayload.STREAM_CODEC,
                 (payload, context) -> WorldMapClient.receiveAnchors(payload.snapshot()));
         registrar.playToServer(AnchorActionPayload.TYPE, AnchorActionPayload.STREAM_CODEC, (payload, context) -> {
@@ -69,7 +71,7 @@ public final class WorldNetwork {
     }
 
     public static void sendGroupEditor(ServerPlayer player, WorldSnapshot snapshot, String error) {
-        PacketDistributor.sendToPlayer(player, new WorldGroupEditorPayload(snapshot, error));
+        PacketDistributor.sendToPlayer(player, new WorldGroupEditorPayload(snapshot, error, net.exmo.exworld.Config.decryptionMode));
     }
 
     public static void sendAnchorSnapshot(ServerPlayer player, net.exmo.exworld.world.model.AnchorSnapshot snapshot) {

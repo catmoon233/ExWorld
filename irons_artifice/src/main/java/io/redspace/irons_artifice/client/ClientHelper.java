@@ -143,7 +143,7 @@ public final class ClientHelper {
         if (!(stack.getItem() instanceof GunItem gun)) {
             return;
         }
-        playClientGunAnimation(gun, msg.instanceId(), msg.animName(), msg.speed(), msg.offsetSeconds(), msg.skipAtSeconds(), msg.skipToSeconds());
+        playClientGunAnimation(gun, GunItem.clientAnimationId(livingEntity.getId(), msg.interactionHand()), msg.animName(), msg.speed(), msg.offsetSeconds(), msg.skipAtSeconds(), msg.skipToSeconds());
     }
 
     public static void playClientGunAnimation(GunItem gun, long instanceId, String animName, double speed, double offsetSeconds, double skipAtSeconds, double skipToSeconds) {
@@ -163,7 +163,7 @@ public final class ClientHelper {
         if (!(stack.getItem() instanceof GunItem gun)) {
             return;
         }
-        cancelClientGunAnimation(gun, msg.instanceId());
+        cancelClientGunAnimation(gun, GunItem.clientAnimationId(livingEntity.getId(), msg.interactionHand()));
     }
 
     public static void cancelClientGunAnimation(GunItem gun, long instanceId) {

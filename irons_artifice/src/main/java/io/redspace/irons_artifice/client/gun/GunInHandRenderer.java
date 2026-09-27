@@ -16,14 +16,18 @@ import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
 
-import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class GunInHandRenderer extends GeoItemRenderer<GunItem> {
@@ -35,20 +39,86 @@ public class GunInHandRenderer extends GeoItemRenderer<GunItem> {
     );
 
     private @Nullable GunRenderContext context;
-
+    private @Nullable BakedGeoModel renderingModel;
+    private final Map<GeoBone, BoneState> adjustedBoneStates = new IdentityHashMap<>();
+    private boolean modelAdjusted;
     public GunInHandRenderer(GeoModel<GunItem> model) {
         super(model);
     }
 
     @Override
+    public long getInstanceId(GunItem animatable) {
+        GunRenderOwner.Holder holder = GunRenderOwner.current();
+        if (holder != null) {
+            return GunItem.clientAnimationId(holder.entityId(), holder.hand());
+        }
+        ItemDisplayContext perspective = this.renderPerspective;
+        var player = Minecraft.getInstance().player;
+        if (player != null && isFirstPerson(perspective)) {
+            boolean left = perspective == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
+            boolean mainArmIsLeft = player.getMainArm() == HumanoidArm.LEFT;
+            InteractionHand hand = left == mainArmIsLeft ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+            return GunItem.clientAnimationId(player.getId(), hand);
+        }
+        ItemStack stack = this.currentItemStack;
+        // GUI and ground must not share a hand controller. Stack ids collide across players.
+        return stack == null ? 1L : (Long.MIN_VALUE ^ System.identityHashCode(stack));
+    }
+
+    @Override
     public void preRender(PoseStack poseStack, GunItem animatable, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        restoreAdjustedBoneStates();
         this.context = GunRenderContext.capture(animatable, this.currentItemStack, this.renderPerspective, partialTick, packedLight);
+        this.modelAdjusted = false;
+        this.renderingModel = model;
         if (isLeftHand(this.renderPerspective)) {
             poseStack.scale(-1f, 1f, 1f);
             poseStack.last().normal().scale(-1f, -1f, 1f);
         }
-        adjustBones(model, this.context);
         super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
+    }
+
+    @Override
+    public void actuallyRender(PoseStack poseStack, GunItem animatable, BakedGeoModel model, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        restoreAdjustedBoneStates();
+        if (!isReRender) {
+            resetSharedBones(model);
+        }
+        this.renderingModel = model;
+        this.modelAdjusted = false;
+        super.actuallyRender(poseStack, animatable, model, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
+    }
+
+    @Override
+    public void postRender(PoseStack poseStack, GunItem animatable, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        try {
+            super.postRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
+        } finally {
+            restoreAdjustedBoneStates();
+        }
+    }
+
+    @Override
+    public void renderRecursively(PoseStack poseStack, GunItem animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        if (!this.modelAdjusted && this.renderingModel != null && this.context != null) {
+            this.modelAdjusted = true;
+            applyAdjusters(this.renderingModel);
+        }
+        float posX = bone.getPosX();
+        float posY = bone.getPosY();
+        float posZ = bone.getPosZ();
+        float rotX = bone.getRotX();
+        float rotY = bone.getRotY();
+        float rotZ = bone.getRotZ();
+        float scaleX = bone.getScaleX();
+        float scaleY = bone.getScaleY();
+        float scaleZ = bone.getScaleZ();
+        applyPerspective(bone);
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
+        bone.updatePosition(posX, posY, posZ);
+        bone.updateRotation(rotX, rotY, rotZ);
+        bone.updateScale(scaleX, scaleY, scaleZ);
+        bone.resetStateChanges();
     }
 
     @Override
@@ -81,41 +151,74 @@ public class GunInHandRenderer extends GeoItemRenderer<GunItem> {
         }
     }
 
-    private void adjustBones(BakedGeoModel model, GunRenderContext renderContext) {
-        ItemDisplayContext perspective = renderContext.perspective;
-        if (perspective != null && HAND_PERSPECTIVES.contains(perspective)) {
-            if (!isFirstPerson(perspective)) {
-                model.getBone(GunBones.ROOT).ifPresent(root -> {
-                    root.updatePosition(0, 0, 0);
-                    root.updateRotation(0, 0, 0);
-                });
-            }
-        } else {
-            List<GeoBone> bones = new ArrayList<>();
-            collectBones(model.topLevelBones(), bones);
-            for (GeoBone bone : bones) {
-                if (!bone.getName().contains(GunBones.HAMMER)) {
-                    bone.updatePosition(0, 0, 0);
-                    bone.updateRotation(0, 0, 0);
-                    bone.updateScale(1, 1, 1);
-                }
-            }
-        }
-        if (renderContext.adjusters == null) {
+    private void applyAdjusters(BakedGeoModel model) {
+        GunRenderContext renderContext = this.context;
+        if (renderContext == null || renderContext.adjusters == null) {
             return;
         }
+        captureBoneStates(model.topLevelBones());
         for (AnimationAdjuster adjuster : renderContext.adjusters) {
             adjuster.adjust(model, renderContext);
         }
     }
 
-    private static void collectBones(List<GeoBone> bones, List<GeoBone> collector) {
+    private void captureBoneStates(List<GeoBone> bones) {
         for (GeoBone bone : bones) {
-            if (bone == null) {
-                continue;
+            adjustedBoneStates.put(bone, new BoneState(bone));
+            captureBoneStates(bone.getChildBones());
+        }
+    }
+
+    private void restoreAdjustedBoneStates() {
+        adjustedBoneStates.forEach((bone, state) -> state.restore(bone));
+        adjustedBoneStates.clear();
+    }
+
+    private record BoneState(float posX, float posY, float posZ, float rotX, float rotY, float rotZ,
+                             float scaleX, float scaleY, float scaleZ) {
+        private BoneState(GeoBone bone) {
+            this(bone.getPosX(), bone.getPosY(), bone.getPosZ(), bone.getRotX(), bone.getRotY(), bone.getRotZ(),
+                    bone.getScaleX(), bone.getScaleY(), bone.getScaleZ());
+        }
+
+        private void restore(GeoBone bone) {
+            bone.updatePosition(posX, posY, posZ);
+            bone.updateRotation(rotX, rotY, rotZ);
+            bone.updateScale(scaleX, scaleY, scaleZ);
+        }
+    }
+
+    private static void resetSharedBones(BakedGeoModel model) {
+        resetSharedBones(model.topLevelBones());
+    }
+
+    private static void resetSharedBones(List<GeoBone> bones) {
+        for (GeoBone bone : bones) {
+            var initial = bone.getInitialSnapshot();
+            if (initial != null) {
+                bone.updatePosition(initial.getOffsetX(), initial.getOffsetY(), initial.getOffsetZ());
+                bone.updateRotation(initial.getRotX(), initial.getRotY(), initial.getRotZ());
+                bone.updateScale(initial.getScaleX(), initial.getScaleY(), initial.getScaleZ());
             }
-            collector.add(bone);
-            collectBones(bone.getChildBones(), collector);
+            bone.resetStateChanges();
+            resetSharedBones(bone.getChildBones());
+        }
+    }
+
+    private void applyPerspective(GeoBone bone) {
+        ItemDisplayContext perspective = this.renderPerspective;
+        String name = bone.getName();
+        if (perspective == null || !HAND_PERSPECTIVES.contains(perspective)) {
+            if (!name.contains(GunBones.HAMMER)) {
+                bone.updatePosition(0, 0, 0);
+                bone.updateRotation(0, 0, 0);
+                bone.updateScale(1, 1, 1);
+            }
+            return;
+        }
+        if (!isFirstPerson(perspective) && GunBones.ROOT.equals(name)) {
+            bone.updatePosition(0, 0, 0);
+            bone.updateRotation(0, 0, 0);
         }
     }
 

@@ -19,6 +19,17 @@ public class BaseGeoItem extends Item implements GeoItem {
         GeoItem.registerSyncedAnimatable(this);
     }
 
+    @Override
+    public void createGeoRenderer(java.util.function.Consumer<GeoRenderProvider> consumer) {
+        // GeckoLib memoizes the first provider. Delegate so client setup can still fill geoRenderProvider.
+        consumer.accept(new GeoRenderProvider() {
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getGeoItemRenderer() {
+                GeoRenderProvider delegate = BaseGeoItem.this.geoRenderProvider.getValue();
+                return delegate == null ? null : delegate.getGeoItemRenderer();
+            }
+        });
+    }
 
     @Override
     public void registerControllers(final AnimatableManager.@NotNull ControllerRegistrar controllers) {

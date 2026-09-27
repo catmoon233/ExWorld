@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "guimi_mod:item/flame_weapon_whip"
+  }
+}

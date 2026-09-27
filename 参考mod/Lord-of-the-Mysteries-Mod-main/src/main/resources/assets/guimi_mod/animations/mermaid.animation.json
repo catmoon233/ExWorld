@@ -1,0 +1,38 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.mermaid.move": {
+			"loop": true,
+			"bones": {
+				"bipedLeftLeg": {
+					"scale": {
+						"vector": [1, 1, 1]
+					}
+				},
+				"bipedRightLeg": {
+					"position": {
+						"vector": [0, 0, 0]
+					}
+				}
+			}
+		},
+		"animation.mermaid.sing": {
+			"animation_length": 0.75,
+			"bones": {
+				"bipedLeftArm": {
+					"rotation": {
+						"0.0": {
+							"vector": [-0.7962, 0.1799, 2.3617]
+						},
+						"0.3333": {
+							"vector": [-12.1255, 7.7455, 41.9375]
+						},
+						"0.75": {
+							"vector": [-16.1485, 18.3149, 74.2159]
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -23,6 +23,7 @@ final class GroupEditorAtlasTexture implements AutoCloseable {
     GroupEditorAtlasTexture(WorldSnapshot snapshot, Map<String, String> tileOwners, Map<String, Boolean> configured) {
         NativeImage image = new NativeImage(snapshot.mapWidth(), snapshot.mapHeight(), false);
         try {
+            clear(image);
             for (MapTile tile : snapshot.tiles()) {
                 String groupId = tileOwners.getOrDefault(tile.id(), tile.regionId());
                 int rgb = WorldGroupEditorScreen.groupColor(groupId);
@@ -45,6 +46,12 @@ final class GroupEditorAtlasTexture implements AutoCloseable {
     ResourceLocation location() { return location; }
 
     @Override public void close() { Minecraft.getInstance().getTextureManager().release(location); }
+    private static void clear(NativeImage image) {
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) image.setPixelRGBA(x, y, 0);
+        }
+    }
+
 
     private static int desaturate(int rgb) {
         int red = (rgb >> 16) & 0xFF, green = (rgb >> 8) & 0xFF, blue = rgb & 0xFF;

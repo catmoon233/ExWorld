@@ -84,6 +84,7 @@ public final class Config {
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
+        if (!(event instanceof ModConfigEvent.Loading || event instanceof ModConfigEvent.Reloading)) return;
         if (event.getConfig().getSpec() == SERVER_SPEC) {
             decryptionMode = DECRYPTION_MODE.get();
             adventureChatDistance = ADVENTURE_CHAT_DISTANCE.get();

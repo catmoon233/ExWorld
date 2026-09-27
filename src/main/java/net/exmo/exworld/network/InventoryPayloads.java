@@ -97,6 +97,25 @@ public final class InventoryPayloads {
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
+    public record CurioClickPayload(String identifier, int index) implements CustomPacketPayload {
+        public static final Type<CurioClickPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Exworld.MODID, "curio_click"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CurioClickPayload> STREAM_CODEC = StreamCodec.of(
+                (buf, payload) -> {
+                    buf.writeUtf(payload.identifier);
+                    buf.writeVarInt(payload.index);
+                },
+                buf -> new CurioClickPayload(buf.readUtf(), buf.readVarInt()));
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record AccessoryClickPayload(int index) implements CustomPacketPayload {
+        public static final Type<AccessoryClickPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(Exworld.MODID, "accessory_click"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AccessoryClickPayload> STREAM_CODEC = StreamCodec.of(
+                (buf, payload) -> buf.writeVarInt(payload.index),
+                buf -> new AccessoryClickPayload(buf.readVarInt()));
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
     public static Map<String, ItemFootprint> parse(Map<String, String> tokens) {
         Map<String, ItemFootprint> values = new LinkedHashMap<>();
         if (tokens == null) return values;

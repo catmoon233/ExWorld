@@ -1,0 +1,15 @@
+{
+  "mystery.identity_reveal": {"sounds": ["exworld:mystery/identity_reveal"]},
+  "mystery.hunt_start": {"sounds": ["exworld:mystery/hunt_start"]},
+  "mystery.clue_found": {"sounds": ["exworld:mystery/clue_found"]},
+  "mystery.linked_death": {"sounds": ["exworld:mystery/linked_death"]},
+  "mystery.rewind": {"sounds": ["exworld:mystery/rewind"]},
+  "mystery.cycle_recap": {"sounds": ["exworld:mystery/cycle_recap"]},
+  "mystery.memory_wait": {"sounds": ["exworld:mystery/memory_wait"]},
+  "mystery.board_train": {"sounds": ["exworld:mystery/board_train"]},
+  "mystery.ending_chase": {"sounds": ["exworld:mystery/ending_chase"]},
+  "mystery.ritual_complete": {"sounds": ["exworld:mystery/ritual_complete"]},
+  "mystery.ending_bad": {"sounds": ["exworld:mystery/ending_bad"]},
+  "mystery.ending_normal": {"sounds": ["exworld:mystery/ending_normal"]},
+  "mystery.ending_perfect": {"sounds": ["exworld:mystery/ending_perfect"]}
+}

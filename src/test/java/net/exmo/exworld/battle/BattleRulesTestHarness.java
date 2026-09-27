@@ -21,7 +21,29 @@ import java.util.*;
 public final class BattleRulesTestHarness {
     public static void main(String[] args) {
         pathfindingPrefersStraightRoutes();
-        pathfindingAndReservation(); pathfindingRoutesAroundCombatants(); snapshotsExposeBlockedCells(); tacticalTeleportIgnoresMovementBudget(); stagedSkillLifecycle(); concurrentPartyCommands(); turnBasedPotionStatuses(); potionLevelsDecay(); circularSkillRadius(); lineOfSight(); airborneUnitsDoNotOccludeRangedSkills(); ironHitPolicies(); deckCycle(); dashPassiveAndFreeMovement(); passiveCarrierIsIndependent(); phaseHandCleanup(); effectResolverUsesFinalDamage(); initialHandSize(); playerCardCollection(); cardInstancesAndFusion(); cardStarConfigurationAndFreeze(); starterCardDistribution(); cardContentAndLoopRules();         debugPartyRules(); phaseAndCommandRules(); readyCanBeWithdrawn(); emptyDeploymentDoesNotDelayOpeningAi(); firstPhaseWaitsForAlliedAi(); enemyOpeningAiActsImmediately(); aiActionsArePaced(); ironCastKeepsAutoBattlePhaseLocked(); aiHealsLowestHealthAlly(); aiUsesSelfSkillWithoutEnemy(); aiChoosesCellSkillCoverage(); aiMovesIntoCastRange(); aiFallsBackToBasicAttack(); aiFinishesWhenNoActionExists(); actionPointsLimitMonster(); resultFlow(); disconnectedPlayerDoesNotBlockResult(); resultTimeoutAutoSettles(); defeatedPlayerCanConfirmResult(); multipleFactionOrder(); engagementAdvantage(); debugCardCatalog(); genericAndWarriorSkills();
+        pathfindingAndReservation(); pathfindingRoutesAroundCombatants(); snapshotsExposeBlockedCells(); tacticalTeleportIgnoresMovementBudget(); stagedSkillLifecycle(); concurrentPartyCommands(); turnBasedPotionStatuses(); potionLevelsDecay(); circularSkillRadius(); lineOfSight(); airborneUnitsDoNotOccludeRangedSkills(); ironHitPolicies(); deckCycle(); dashPassiveAndFreeMovement(); passiveCarrierIsIndependent(); phaseHandCleanup(); effectResolverUsesFinalDamage(); initialHandSize(); playerCardCollection(); cardInstancesAndFusion(); cardStarConfigurationAndFreeze(); starterCardDistribution(); cardContentAndLoopRules();         debugPartyRules(); phaseAndCommandRules(); readyCanBeWithdrawn(); emptyDeploymentDoesNotDelayOpeningAi(); firstPhaseWaitsForAlliedAi(); enemyOpeningAiActsImmediately(); aiActionsArePaced(); ironCastKeepsAutoBattlePhaseLocked(); aiHealsLowestHealthAlly(); aiUsesSelfSkillWithoutEnemy(); aiChoosesCellSkillCoverage(); aiMovesIntoCastRange(); aiFallsBackToBasicAttack(); aiFinishesWhenNoActionExists(); actionPointsLimitMonster(); resultFlow(); disconnectedPlayerDoesNotBlockResult(); resultTimeoutAutoSettles(); defeatedPlayerCanConfirmResult(); multipleFactionOrder(); engagementAdvantage(); debugCardCatalog(); genericAndWarriorSkills(); battleHardTimeoutAbortsStuckSessions();
+    }
+
+    private static void battleHardTimeoutAbortsStuckSessions() {
+        UUID player = UUID.randomUUID(), enemy = UUID.randomUUID();
+        BattleSession session = battle(skillSeed(player, player, "players", 0, 0, 30, 3, 100, List.of("exworld:defend")),
+                skillSeed(enemy, null, "enemies", 7, 0, 1, 3, 100, List.of("exworld:defend")));
+        // Neither side acts in the pure harness, so the session cycles phases without ever resolving.
+        // The hard cap must still terminate it so its participants are never held in the world-damage
+        // gate (immune to all damage and death) indefinitely.
+        long cap = BattleSession.MAX_BATTLE_TICKS;
+        BattleState finalState = null;
+        for (long i = 0; i < cap + 500; i++) {
+            session.tick();
+            finalState = session.snapshot().state();
+            if (finalState.terminal()) break;
+        }
+        check(finalState == BattleState.ABORTED || finalState == BattleState.REWARD
+                        || finalState == BattleState.RETURNING || finalState.terminal(),
+                "stuck session force-terminates by the hard cap instead of cycling forever; was " + finalState);
+        check(session.snapshot().result() != null
+                        && BattleResult.Outcome.ABORTED.name().equals(session.snapshot().result().outcome()),
+                "force-terminated session records an ABORTED outcome");
     }
 
     private static void passiveCarrierIsIndependent() {

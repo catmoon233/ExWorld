@@ -79,6 +79,7 @@ public final class NpcSystem {
     }
 
     public static void openDialog(ServerPlayer player, UrbanNpc npc, NpcDocument doc, NpcCatalog catalog, String dialogId) {
+        net.exmo.exworld.mystery.MysteryGame.npcContact(player, doc.id());
         DialogScript script = doc.dialog(dialogId).orElseGet(() -> doc.dialog(doc.defaultDialogId()).orElse(null));
         if (script == null) {
             player.displayClientMessage(Component.translatable("npc.exworld.no_dialog"), true);
@@ -187,6 +188,7 @@ public final class NpcSystem {
     private static void button(ServerPlayer player, CompoundTag tag) {
         Entity entity = player.serverLevel().getEntity(tag.getInt("entity"));
         if (!(entity instanceof UrbanNpc npc)) return;
+        if (player.distanceToSqr(npc) > 64.0) return;
         NpcCatalog catalog = NpcCatalog.get(player.server);
         NpcDocument doc = catalog.document(npc.documentId()).orElse(null);
         if (doc == null) return;
@@ -194,6 +196,7 @@ public final class NpcSystem {
         int index = tag.getInt("button");
         if (script == null || index < 0 || index >= script.buttons().size()) return;
         DialogScript.DialogButton button = script.buttons().get(index);
+        net.exmo.exworld.mystery.MysteryGame.npcChoice(player, doc.id(), button.actionId().isBlank() ? button.dialogId() : button.actionId());
         if (!button.dialogId().isBlank()) {
             openDialog(player, npc, doc, catalog, button.dialogId());
             return;

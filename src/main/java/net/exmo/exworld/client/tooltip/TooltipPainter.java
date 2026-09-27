@@ -1,5 +1,7 @@
 package net.exmo.exworld.client.tooltip;
 
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
@@ -134,6 +136,13 @@ public final class TooltipPainter {
         pose.pushPose();
         pose.translate(centerX, centerY, 0.0F);
         if (model.isGui3d()) {
+            // A Y spin of 180° puts the far half at negative Z, behind the panel fill.
+            // Flush that fill, clear depth inside the slot, then keep the model in front.
+            graphics.flush();
+            RenderSystem.enableDepthTest();
+            GlStateManager._depthMask(true);
+            GlStateManager._clear(org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false);
+            pose.translate(0.0F, 0.0F, 48.0F);
             float yaw = (timeMs % 8000L) / 8000.0F * 360.0F;
             pose.mulPose(Axis.YP.rotationDegrees(yaw));
             pose.mulPose(Axis.XP.rotationDegrees(25.0F));

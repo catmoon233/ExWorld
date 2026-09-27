@@ -2,6 +2,7 @@ package net.exmo.lotm.sequence;
 
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -18,6 +19,45 @@ public final class SequenceRegistry {
     public static void register(PathwayDefinition pathway) {
         if (pathway == null || pathway.id() == null) return;
         PATHWAYS.put(pathway.id(), pathway);
+    }
+
+    public static void mergeSkills(ResourceLocation id, SequenceRank rank, String nameKey, String introductionKey,
+                                    java.util.List<SequenceSkill> extra) {
+        if (id == null || rank == null || extra == null || extra.isEmpty()) return;
+        PathwayDefinition pathway = PATHWAYS.get(id);
+        if (pathway == null) return;
+        java.util.List<SequenceDefinition> replaced = new ArrayList<>();
+        boolean found = false;
+        boolean changed = false;
+        for (SequenceDefinition sequence : pathway.sequences()) {
+            if (sequence.rank() != rank) {
+                replaced.add(sequence);
+                continue;
+            }
+            found = true;
+            java.util.List<SequenceSkill> merged = new ArrayList<>(sequence.skills());
+            java.util.Set<ResourceLocation> have = new java.util.HashSet<>();
+            for (SequenceSkill skill : merged) have.add(skill.ref());
+            int before = merged.size();
+            for (SequenceSkill skill : extra) {
+                if (skill != null && have.add(skill.ref())) merged.add(skill);
+            }
+            if (merged.size() != before) {
+                changed = true;
+                replaced.add(new SequenceDefinition(sequence.id(), sequence.pathwayId(), sequence.rank(),
+                        sequence.nameKey(), sequence.introductionKey(), sequence.attributes(), merged));
+            } else {
+                replaced.add(sequence);
+            }
+        }
+        if (!found) {
+            replaced.add(new SequenceDefinition(
+                    ResourceLocation.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "/" + rank.token()),
+                    id, rank, nameKey == null ? "" : nameKey, introductionKey == null ? "" : introductionKey,
+                    java.util.List.of(), extra));
+            changed = true;
+        }
+        if (changed) PATHWAYS.put(id, new PathwayDefinition(pathway.id(), pathway.nameKey(), replaced));
     }
 
     public static void alias(String token, ResourceLocation canonical) {

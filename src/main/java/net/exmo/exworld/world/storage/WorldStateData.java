@@ -1,6 +1,7 @@
 package net.exmo.exworld.world.storage;
 
 import net.exmo.exworld.Config;
+import net.exmo.exworld.world.model.GroupEditorSync;
 import net.exmo.exworld.world.generation.WorldLayoutGenerator;
 import net.exmo.exworld.world.model.Region;
 import net.exmo.exworld.world.model.WorldTile;
@@ -38,7 +39,7 @@ public final class WorldStateData extends SavedData {
     private int groupChunks = WorldDimensions.DEFAULT_GROUP_CHUNKS;
     private final BitSet generatedChunkBits = new BitSet();
     private boolean pregenerationEnabled;
-    /** New worlds begin with generated zones; the editor can still switch to manual singleton groups. */
+    /** New worlds begin with generated zones unless decryption mode wants a blank manual atlas. */
     private boolean manualGroups = false;
     /** Monotonic edit token so concurrent remote editors cannot silently overwrite one another. */
     private long groupRevision;
@@ -55,13 +56,40 @@ public final class WorldStateData extends SavedData {
             regions.clear();
             generatedChunkBits.clear();
         }
-        if (!tiles.isEmpty()) return;
-        WorldLayoutGenerator.GeneratedLayout layout = WorldLayoutGenerator.generate(seed, groupChunks, !manualGroups,
+        if (!tiles.isEmpty()) {
+            if (Config.decryptionMode && !manualGroups) dropAutomaticGroups();
+            return;
+        }
+        boolean automatic = GroupEditorSync.generateAutomaticGroups(Config.decryptionMode, manualGroups);
+        WorldLayoutGenerator.GeneratedLayout layout = WorldLayoutGenerator.generate(seed, groupChunks, automatic,
                 Config.zoneTargetSpan, archipelago);
         layout.tiles().forEach(tile -> tiles.put(tile.id(), tile));
         layout.regions().forEach(region -> regions.put(region.id(), region));
         totalChunks = tiles.size() * WorldDimensions.chunksPerGroup(groupChunks);
+        if (!automatic) manualGroups = true;
         layoutVersion = LAYOUT_VERSION;
+        setDirty();
+    }
+
+    /** Decryption mode keeps an unconfigured atlas as one hidden singleton per cell, never as generated zones. */
+    private void dropAutomaticGroups() {
+        if (regions.values().stream().anyMatch(Region::configured)) {
+            manualGroups = true;
+            groupRevision++;
+            setDirty();
+            return;
+        }
+        Map<String, Region> next = new LinkedHashMap<>();
+        tiles.replaceAll((id, tile) -> {
+            String regionId = "manual_" + tile.id();
+            next.put(regionId, new Region(regionId, List.of(tile.id()),
+                    tile.name() + " [" + tile.mapX() + ", " + tile.mapZ() + "]", worldSeed ^ tile.id().hashCode()));
+            return withRegion(tile, regionId);
+        });
+        regions.clear();
+        regions.putAll(next);
+        manualGroups = true;
+        groupRevision++;
         setDirty();
     }
 
@@ -152,6 +180,7 @@ public final class WorldStateData extends SavedData {
     /** Enabling preserves existing generated groups; disabling deliberately restores the generated partition. */
     public void setManualGroups(long seed, boolean enabled) {
         if (manualGroups == enabled) return;
+        if (!enabled && Config.decryptionMode) return;
         if (!enabled) replaceLayout(WorldLayoutGenerator.generate(seed, groupChunks, true, Config.zoneTargetSpan, archipelago));
         manualGroups = enabled;
         groupRevision++;
@@ -160,7 +189,9 @@ public final class WorldStateData extends SavedData {
 
     /** Applies a complete editor draft after its coverage and connectedness have been verified in one place. */
     public void applyGroupEdit(long seed, boolean enabled, List<ManualChunkGroupLayout.Group> groups) {
-        if (!enabled) {
+        // A blank decryption map must keep the client's draft. Regenerating automatic zones would put
+        // groups back into the editor that the M map does not show.
+        if (!GroupEditorSync.persistDraft(Config.decryptionMode, enabled)) {
             setManualGroups(seed, false);
             return;
         }
@@ -174,6 +205,8 @@ public final class WorldStateData extends SavedData {
             applied.tiles().forEach(tile -> tiles.put(tile.id(), tile));
             regions.clear();
             applied.regions().forEach(region -> regions.put(region.id(), region));
+        } else if (archipelago) {
+            applyVisibleGroupEdit(applied);
         } else {
             applyWindowedGroupEdit(editedTileIds, applied);
         }
@@ -206,6 +239,31 @@ public final class WorldStateData extends SavedData {
         }
         applied.tiles().forEach(tile -> tiles.put(tile.id(), tile));
         applied.regions().forEach(region -> regions.put(region.id(), region));
+    }
+    /** Explored-only drafts must not split the hidden remainder of an island or automatic group. */
+    private void applyVisibleGroupEdit(ManualChunkGroupLayout.Applied applied) {
+        Set<String> editedIds = applied.tiles().stream().map(WorldTile::id).collect(java.util.stream.Collectors.toSet());
+        for (Region region : applied.regions()) {
+            boolean outside = tiles.values().stream().anyMatch(tile -> !editedIds.contains(tile.id()) && tile.regionId().equals(region.id()));
+            boolean continuing = tiles.values().stream().anyMatch(tile -> editedIds.contains(tile.id()) && tile.regionId().equals(region.id()));
+            if (outside && !continuing) {
+                throw new IllegalArgumentException("group id is already used outside this map window: " + region.id());
+            }
+        }
+        Map<String, Region> incoming = new LinkedHashMap<>();
+        applied.regions().forEach(region -> incoming.put(region.id(), region));
+        applied.tiles().forEach(tile -> tiles.put(tile.id(), tile));
+        Map<String, List<String>> members = new LinkedHashMap<>();
+        for (WorldTile tile : tiles.values()) members.computeIfAbsent(tile.regionId(), id -> new ArrayList<>()).add(tile.id());
+        Map<String, Region> next = new LinkedHashMap<>();
+        members.forEach((id, tileIds) -> {
+            Region source = incoming.getOrDefault(id, regions.get(id));
+            if (source == null) source = new Region(id, tileIds, id, 0L);
+            next.put(id, new Region(id, tileIds, source.name(), source.storySeed(), source.icon(), source.site(),
+                    source.resources(), source.configured(), source.cannotLeave()));
+        });
+        regions.clear();
+        regions.putAll(next);
     }
 
     private String detachedRegionId(String originalId, Set<String> reservedIds) {

@@ -1,0 +1,35 @@
+# ===== Gradle / 构建 =====
+.gradle/
+build/
+out/
+classes/
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# ===== 游戏运行目录（runClient 产生的世界/日志，通常很大，勿提交）=====
+run/
+logs/
+crash-reports/
+hs_err_pid*.log
+
+# ===== 系统 / 临时 =====
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# ===== 本地私有配置 =====
+*.local
+config/secrets/
+# ===== ���ع��� / �����ļ� =====
+.feisuan/
+/net/
+.frontend-port
+*.mp3

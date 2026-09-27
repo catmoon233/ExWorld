@@ -8,7 +8,12 @@ public final class ChunkGroupVisibility {
 
     public static boolean allows(ChunkGroupShape active, double playerX, double playerZ,
                                  double candidateX, double candidateZ) {
-        if (!net.exmo.exworld.Config.legacyRegionBoundary) return true;
+        if (!restrictsOutsideGroup()) return true;
         return active == null || active.containsPosition(candidateX, candidateZ);
+    }
+
+    /** Legacy walls and decryption mode both hide the world outside the active group. */
+    public static boolean restrictsOutsideGroup() {
+        return net.exmo.exworld.Config.legacyRegionBoundary || net.exmo.exworld.Config.decryptionMode;
     }
 }

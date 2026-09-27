@@ -1,0 +1,65 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.dawn_armor",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 3,
+				"visible_bounds_height": 3.5,
+				"visible_bounds_offset": [0, 1.25, 0]
+			},
+			"bones": [
+				{
+					"name": "armorBody",
+					"pivot": [0, 24, 0]
+				},
+				{
+					"name": "chestplate",
+					"parent": "armorBody",
+					"pivot": [0, 24, 0],
+					"cubes": [
+						{
+							"origin": [-4, 12, -2],
+							"size": [8, 12, 4],
+							"inflate": 1.01,
+							"uv": {
+								"north": {"uv": [48, 0], "uv_size": [16, 24]},
+								"east": {"uv": [0, 8], "uv_size": [8, 24]},
+								"south": {"uv": [48, 40], "uv_size": [16, 24]},
+								"west": {"uv": [0, 8], "uv_size": [8, 24]},
+								"up": {"uv": [11, 48], "uv_size": [16, 8]},
+								"down": {"uv": [24, 8], "uv_size": [16, -8]}
+							}
+						}
+					]
+				},
+				{
+					"name": "armorRightArm",
+					"pivot": [-5, 22, 0]
+				},
+				{
+					"name": "arm_plate_right",
+					"parent": "armorRightArm",
+					"pivot": [-5, 22, 0],
+					"cubes": [
+						{"origin": [-8, 12, -2], "size": [4, 12, 4], "inflate": 1, "uv": [20, 13]}
+					]
+				},
+				{
+					"name": "armorLeftArm",
+					"pivot": [5, 22, 0]
+				},
+				{
+					"name": "arm_plate_left",
+					"parent": "armorLeftArm",
+					"pivot": [5, 22, 0],
+					"cubes": [
+						{"origin": [4, 12, -2], "size": [4, 12, 4], "inflate": 1, "uv": [20, 13], "mirror": true}
+					]
+				}
+			]
+		}
+	]
+}

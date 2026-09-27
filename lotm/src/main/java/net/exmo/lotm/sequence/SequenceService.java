@@ -1,5 +1,6 @@
 package net.exmo.lotm.sequence;
 
+import net.exmo.lotm.guimi.GuimiIntegration;
 import net.exmo.exworld.Exworld;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -67,7 +68,7 @@ public final class SequenceService {
         if (player == null || pathway == null || rank == null || pathway.byRank(rank) == null) return false;
         data(player).set(pathway.id(), rank);
         reapply(player);
-        GuimiSequenceBridge.push(player);
+        GuimiIntegration.push(player);
         SequenceNetwork.sync(player, false);
         return true;
     }
@@ -76,7 +77,7 @@ public final class SequenceService {
         if (player == null) return;
         data(player).clear();
         reapply(player);
-        GuimiSequenceBridge.push(player);
+        GuimiIntegration.push(player);
         SequenceNetwork.sync(player, false);
     }
 
@@ -130,6 +131,9 @@ public final class SequenceService {
     }
 
     private static boolean isSpell(ResourceLocation id) {
-        return id != null && "irons_spellbooks".equals(id.getNamespace());
+        if (id == null) return false;
+        io.redspace.ironsspellbooks.api.spells.AbstractSpell spell =
+                io.redspace.ironsspellbooks.api.registry.SpellRegistry.getSpell(id);
+        return spell != null && spell != io.redspace.ironsspellbooks.api.registry.SpellRegistry.none();
     }
 }

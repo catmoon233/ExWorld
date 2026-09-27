@@ -21,6 +21,17 @@ public abstract class CameraMixin {
     @ModifyArgs(method = "setup", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/Camera;setRotation(FF)V", ordinal = 0))
     private void exworld$fixDungeonCameraBeforePositioning(Args args) {
+        var memory = net.exmo.exworld.mystery.client.InWorldMemory.playbackPose();
+        if (memory != null) {
+            args.set(0, memory.yaw());
+            args.set(1, memory.pitch());
+            return;
+        }
+        if (net.exmo.exworld.mystery.client.MysteryCamera.active()) {
+            args.set(0, net.exmo.exworld.mystery.client.MysteryCamera.yaw(0));
+            args.set(1, net.exmo.exworld.mystery.client.MysteryCamera.pitch(0));
+            return;
+        }
         if (!DungeonPerspective.active()) return;
         args.set(0, DungeonPerspective.cameraYaw());
         args.set(1, DungeonPerspective.cameraPitch());
@@ -29,8 +40,18 @@ public abstract class CameraMixin {
     @Inject(method = "setup", at = @At("TAIL"))
     private void exworld$anchorBattleCamera(net.minecraft.world.level.BlockGetter level, net.minecraft.world.entity.Entity entity,
                                             boolean detached, boolean mirrored, float partialTick, CallbackInfo callback) {
+        var memory = net.exmo.exworld.mystery.client.InWorldMemory.playbackPose();
+        if (memory != null) {
+            setPosition(memory.x(), memory.y(), memory.z());
+            return;
+        }
         if (net.exmo.exworld.client.camera.AdvancedCameraDirector.active()) {
             var director = net.exmo.exworld.client.camera.AdvancedCameraDirector.position(partialTick);
+            setPosition(director.x, director.y, director.z);
+            return;
+        }
+        if (net.exmo.exworld.mystery.client.MysteryCamera.active()) {
+            var director = net.exmo.exworld.mystery.client.MysteryCamera.position(partialTick);
             setPosition(director.x, director.y, director.z);
             return;
         }

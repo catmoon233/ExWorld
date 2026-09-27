@@ -1,0 +1,70 @@
+[
+  {
+    "id": "guimi_mod:moon_seq9",
+    "name": "quest.guimi_mod.moon_seq9.name",
+    "description": "quest.guimi_mod.moon_seq9.desc",
+    "type": "main",
+    "story": true,
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:moon_9" }
+    ],
+    "rewards": [
+      { "type": "spirituality", "amount": 20 }
+    ]
+  },
+  {
+    "id": "guimi_mod:moon_seq8",
+    "name": "quest.guimi_mod.moon_seq8.name",
+    "description": "quest.guimi_mod.moon_seq8.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "moon",
+      "minSequence": 9,
+      "requiredQuest": "guimi_mod:moon_seq9"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:moon_8" }
+    ],
+    "rewards": [
+      { "type": "acting", "amount": 15 }
+    ]
+  },
+  {
+    "id": "guimi_mod:moon_seq7",
+    "name": "quest.guimi_mod.moon_seq7.name",
+    "description": "quest.guimi_mod.moon_seq7.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "moon",
+      "minSequence": 8,
+      "requiredQuest": "guimi_mod:moon_seq8"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:moon_7" }
+    ],
+    "rewards": [
+      { "type": "spirituality", "amount": 25 }
+    ]
+  },
+  {
+    "id": "guimi_mod:moon_seq6",
+    "name": "quest.guimi_mod.moon_seq6.name",
+    "description": "quest.guimi_mod.moon_seq6.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "moon",
+      "minSequence": 7,
+      "requiredQuest": "guimi_mod:moon_seq7"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:moon_6" }
+    ],
+    "rewards": [
+      { "type": "acting", "amount": 20 },
+      { "type": "item", "item": "minecraft:phantom_membrane", "amount": 8 }
+    ]
+  }
+]

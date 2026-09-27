@@ -1,0 +1,144 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.unknown",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 2,
+				"visible_bounds_height": 3.5,
+				"visible_bounds_offset": [0, 1.25, 0]
+			},
+			"bones": [
+				{
+					"name": "后身体",
+					"pivot": [6, 12, -9],
+					"cubes": [
+						{"origin": [-3, 5, -9], "size": [9, 11, 16], "uv": [1, 1]}
+					]
+				},
+				{
+					"name": "身体",
+					"pivot": [6, 12, -11],
+					"cubes": [
+						{"origin": [-4, 3, -12], "size": [11, 14, 11], "uv": [0, 28]}
+					]
+				},
+				{
+					"name": "腿2",
+					"pivot": [-1.5, 3, 1.5]
+				},
+				{
+					"name": "bone",
+					"parent": "腿2",
+					"pivot": [-1.5, 3, 1.5],
+					"cubes": [
+						{"origin": [-3, 0, 0], "size": [3, 6, 3], "uv": [36, 29]}
+					]
+				},
+				{
+					"name": "腿3",
+					"pivot": [3.5, 5, -6.5],
+					"cubes": [
+						{"origin": [2, 0, -8], "size": [3, 10, 3], "uv": [49, 2]}
+					]
+				},
+				{
+					"name": "腿4",
+					"pivot": [4.5, 3, 1.5],
+					"cubes": [
+						{"origin": [3, 0, 0], "size": [3, 6, 3], "uv": [36, 29]}
+					]
+				},
+				{
+					"name": "腿",
+					"pivot": [-1.5, 4.41446, -6.91104],
+					"cubes": [
+						{"origin": [-3, -0.58554, -8.41104], "size": [3, 10, 3], "uv": [49, 2]}
+					]
+				},
+				{
+					"name": "头",
+					"pivot": [-0.00017, 15.66667, -14.66667],
+					"cubes": [
+						{"origin": [-1, 14, -20], "size": [5, 7, 10], "uv": [34, 46]},
+						{"origin": [0.999, 7, -18], "size": [0.001, 7, 5], "uv": [23, 52]}
+					]
+				},
+				{
+					"name": "犄角",
+					"pivot": [1.58333, 22.5, -14.08333],
+					"cubes": [
+						{"origin": [2, 19, -14], "size": [2, 7, 2], "uv": [12, 55]},
+						{"origin": [0.5, 19, -17], "size": [1.5, 7, 1.5], "uv": [57, 46], "mirror": true},
+						{"origin": [-0.5, 19, -14], "size": [2, 7, 2], "uv": [12, 55], "mirror": true}
+					]
+				},
+				{
+					"name": "头2",
+					"pivot": [5.5, 19, -13.5],
+					"cubes": [
+						{"origin": [4, 18, -14], "size": [3, 2, 1], "uv": [2, 61], "mirror": true},
+						{"origin": [-4, 18, -14], "size": [3, 2, 1], "uv": [2, 61]}
+					]
+				},
+				{
+					"name": "goat_body",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_legs",
+					"parent": "goat_body",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "leg_fl",
+					"parent": "goat_legs",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "leg_fr",
+					"parent": "goat_legs",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "leg_bl",
+					"parent": "goat_legs",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "leg_br",
+					"parent": "goat_legs",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_head",
+					"parent": "goat_body",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_horns",
+					"parent": "goat_head",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_body",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_legs",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_head",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "goat_horns",
+					"pivot": [0, 0, 0]
+				}
+			]
+		}
+	]
+}

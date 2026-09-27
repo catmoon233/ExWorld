@@ -1,17 +1,19 @@
 package net.exmo.lotm.client.sequence;
 
+import com.wan.gmmod.common.capability.ModAttachments;
+import com.wan.gmmod.content.sequences.Sequences;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import net.exmo.exworld.client.inventory.InventoryChrome;
 import net.exmo.exworld.inventory.InventoryLayout;
 import net.exmo.exworld.network.InventoryPayloads;
 import net.exmo.lotm.network.SequencePayloads;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -22,7 +24,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /** Sequence sheet in the same window as the backpack. Empty ranks are omitted by the snapshot. */
 public final class SequenceScreen extends Screen {
     private static final int TAB_W = 60;
-    private static final int LIST_W = 148;
+    private static final int LIST_W = 74;
     private static final int ENTRY_H = 28;
     private static final int SKILL = 18;
      private static final int INTRO_H = 48;
@@ -55,7 +57,6 @@ public final class SequenceScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, InventoryLayout.PANEL);
         SequencePayloads.SequenceSnapshotPayload snapshot = ClientSequenceState.snapshot();
         syncSelection(snapshot);
         drawChrome(graphics, mouseX, mouseY);
@@ -87,15 +88,11 @@ public final class SequenceScreen extends Screen {
         int y = panelY;
         drawTab(graphics, x, y, Component.translatable("screen.exworld.backpack_tab"), false,
                 hit(mouseX, mouseY, x, y, TAB_W, InventoryLayout.TAB_H));
-        drawTab(graphics, x + 64, y, Component.translatable("screen.exworld.character_tab"), false, false);
-        drawTab(graphics, x + 128, y, Component.translatable("screen.exworld.quests_tab"), false, false);
-        drawTab(graphics, x + 192, y, Component.translatable("screen.exworld.sequence_tab"), true, false);
+        drawTab(graphics, x + 64, y, Component.translatable("screen.exworld.sequence_tab"), true, false);
+        boolean characterHover = hit(mouseX, mouseY, x + 128, y, TAB_W, InventoryLayout.TAB_H);
+        drawTab(graphics, x + 128, y, Component.translatable("screen.exworld.character_tab"), false, characterHover);
         int body = y + InventoryLayout.TAB_H;
-        graphics.fill(x, body, x + InventoryLayout.IMAGE_WIDTH, y + InventoryLayout.IMAGE_HEIGHT, InventoryLayout.SURFACE);
-        graphics.fill(x, body, x + InventoryLayout.IMAGE_WIDTH, body + 1, InventoryLayout.LINE);
-        graphics.fill(x, y + InventoryLayout.IMAGE_HEIGHT - 1, x + InventoryLayout.IMAGE_WIDTH, y + InventoryLayout.IMAGE_HEIGHT, InventoryLayout.LINE);
-        graphics.fill(x, body, x + 1, y + InventoryLayout.IMAGE_HEIGHT, InventoryLayout.LINE);
-        graphics.fill(x + InventoryLayout.IMAGE_WIDTH - 1, body, x + InventoryLayout.IMAGE_WIDTH, y + InventoryLayout.IMAGE_HEIGHT, InventoryLayout.LINE);
+        InventoryChrome.panel(graphics, x, body, InventoryLayout.IMAGE_WIDTH, InventoryLayout.IMAGE_HEIGHT - InventoryLayout.TAB_H, 1f);
         int split = x + LIST_W + 12;
         graphics.fill(split, body + 8, split + 1, y + InventoryLayout.IMAGE_HEIGHT - 8, InventoryLayout.LINE_INNER);
     }
@@ -107,13 +104,25 @@ public final class SequenceScreen extends Screen {
         Component rank = Component.translatable(snapshot.currentRankKey());
         graphics.drawString(font, name, x, y, InventoryLayout.TEXT, false);
         graphics.drawString(font, rank, x + font.width(name) + 8, y, InventoryLayout.MUTED, false);
+        var player = Minecraft.getInstance().player;
+         if (player != null && Sequences.employed(player.getData(ModAttachments.PATHWAY))) {
+             int acting = Math.max(0, Math.min(100, player.getData(ModAttachments.ACTING_PROGRESS)));
+             int ay = y + 12;
+             Component actingLabel = Component.translatable("screen.exworld.sequence_acting", acting);
+             int barW = 80;
+             int right = panelX + InventoryLayout.IMAGE_WIDTH - 10;
+             int barX = right - barW;
+             graphics.drawString(font, actingLabel, barX - 6 - font.width(actingLabel), ay, InventoryLayout.MUTED, false);
+             graphics.fill(barX, ay + 3, barX + barW, ay + 7, InventoryLayout.LINE_INNER);
+             graphics.fill(barX, ay + 3, barX + (int) (barW * acting / 100.0), ay + 7, InventoryLayout.ACCENT);
+         }
         if (!snapshot.pathwayKey().isBlank()) {
             graphics.drawString(font, Component.translatable(snapshot.pathwayKey()), x + LIST_W + 16, y, InventoryLayout.MUTED, false);
         }
     }
 
     private int listY() {
-        return panelY + InventoryLayout.TAB_H + 22;
+        return panelY + InventoryLayout.TAB_H + 34;
     }
 
     private int listH() {
@@ -155,7 +164,7 @@ public final class SequenceScreen extends Screen {
         int y = listY();
         int w = detailW();
         graphics.fill(x, y, x + w, y + INTRO_H, InventoryLayout.SURFACE_INNER);
-         List<FormattedCharSequence> lines = wrap(Component.translatable(entry.introductionKey()), w - 16);
+        List<FormattedCharSequence> lines = wrap(Component.translatable(entry.introductionKey()), Math.max(8, w - 22));
         introScroll = clampScroll(introScroll, lines.size(), INTRO_H);
         drawScrollingText(graphics, lines, x, y, w, INTRO_H, introScroll, InventoryLayout.TEXT);
 
@@ -189,7 +198,7 @@ public final class SequenceScreen extends Screen {
             graphics.drawString(font, Component.translatable("screen.exworld.sequence_skill_empty"), x + 6, descY + 6, InventoryLayout.MUTED, false);
         } else {
             graphics.drawString(font, Component.translatable(chosen.nameKey()), x + 6, descY + 4, InventoryLayout.TEXT, false);
-             List<FormattedCharSequence> body = wrap(Component.translatable(chosen.descriptionKey()), w - 16);
+            List<FormattedCharSequence> body = wrap(Component.translatable(chosen.descriptionKey()), Math.max(8, w - 22));
             int bodyY = descY + 16;
             int bodyH = Math.max(LINE, descH - 18);
             skillScroll = clampScroll(skillScroll, body.size(), bodyH);
@@ -232,7 +241,7 @@ public final class SequenceScreen extends Screen {
         graphics.enableScissor(x + 1, y + 1, x + w - 1, y + h - 1);
         int lineY = y + 4 - used;
         for (FormattedCharSequence line : lines) {
-             if (lineY >= y + 2 && lineY + LINE <= y + h - 1) {
+            if (lineY + LINE > y + 1 && lineY < y + h - 1) {
                 graphics.drawString(font, line, x + 6, lineY, color, false);
             }
             lineY += LINE;
@@ -294,8 +303,11 @@ public final class SequenceScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (hit(mouseX, mouseY, panelX, panelY, TAB_W, InventoryLayout.TAB_H)) {
-            playClick();
             PacketDistributor.sendToServer(new InventoryPayloads.OpenBackpackPayload());
+            return true;
+        }
+        if (hit(mouseX, mouseY, panelX + 128, panelY, TAB_W, InventoryLayout.TAB_H)) {
+            PacketDistributor.sendToServer(new net.exmo.exworld.network.CharacterPayloads.OpenCharacterPayload());
             return true;
         }
         SequencePayloads.SequenceSnapshotPayload snapshot = ClientSequenceState.snapshot();
@@ -311,7 +323,6 @@ public final class SequenceScreen extends Screen {
                 }
                 selected = index;
                 introScroll = 0;
-                playClick();
             }
             return true;
         }
@@ -331,7 +342,6 @@ public final class SequenceScreen extends Screen {
                     SequencePayloads.SkillView skill = entry.skills().get(i);
                     selectedSkill = skill.id();
                     skillScroll = 0;
-                    playClick();
                     if (hasShiftDown() && "active".equals(skill.kind())) {
                         PacketDistributor.sendToServer(new SequencePayloads.CastSequenceSkillPayload(skill.id()));
                     }
@@ -361,11 +371,6 @@ public final class SequenceScreen extends Screen {
     }
 
 
-    private void playClick() {
-        if (minecraft != null) {
-            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F));
-        }
-    }
 
     private static boolean hit(double mouseX, double mouseY, int x, int y, int w, int h) {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
@@ -408,40 +413,51 @@ public final class SequenceScreen extends Screen {
          return null;
      }
  
-     private void pack(String text, int width, List<FormattedCharSequence> lines) {
-         List<String> tokens = tokens(text);
-         int index = 0;
-         while (index < tokens.size()) {
-             StringBuilder line = new StringBuilder();
-             int lastBreak = -1;
-             int cursor = index;
-             while (cursor < tokens.size()) {
-                 String token = tokens.get(cursor);
-                 if (line.length() == 0 && font.width(token) > width) {
-                     hardSplit(token, width, lines);
-                     cursor++;
-                     break;
-                 }
-                 if (line.length() > 0 && font.width(line.toString() + token) > width) break;
-                 line.append(token);
-                 cursor++;
-                 if (endsBreak(token)) lastBreak = cursor;
-             }
-             if (line.length() == 0) {
-                 index = Math.max(cursor, index + 1);
-                 continue;
-             }
-             if (cursor < tokens.size() && lastBreak > index && lastBreak < cursor) {
-                 StringBuilder cut = new StringBuilder();
-                 for (int token = index; token < lastBreak; token++) cut.append(tokens.get(token));
-                 lines.add(visual(cut.toString().strip()));
-                 index = lastBreak;
-             } else {
-                 lines.add(visual(line.toString().strip()));
-                 index = cursor;
-             }
-         }
-     }
+    private void pack(String text, int width, List<FormattedCharSequence> lines) {
+        List<String> built = new ArrayList<>();
+        List<String> tokens = tokens(text);
+        int index = 0;
+        while (index < tokens.size()) {
+            String token = tokens.get(index);
+            if (font.width(token) > width) {
+                hardSplit(token, width, lines);
+                flushBuilt(built, lines);
+                index++;
+                continue;
+            }
+            StringBuilder line = new StringBuilder();
+            while (index < tokens.size()) {
+                String next = tokens.get(index);
+                if (font.width(next) > width) break;
+                if (line.length() > 0 && font.width(line + next) > width) break;
+                line.append(next);
+                index++;
+            }
+            if (line.length() == 0) {
+                index++;
+                continue;
+            }
+            built.add(line.toString().strip());
+        }
+        stickPunctuation(built);
+        flushBuilt(built, lines);
+    }
+
+    private void flushBuilt(List<String> built, List<FormattedCharSequence> lines) {
+        for (String line : built) lines.add(visual(line));
+        built.clear();
+    }
+
+    private static void stickPunctuation(List<String> lines) {
+        for (int i = 1; i < lines.size(); i++) {
+            String text = lines.get(i);
+            if (text.isEmpty() || !isDanglingPunct(text.charAt(0))) continue;
+            lines.set(i - 1, lines.get(i - 1) + text.charAt(0));
+            String rest = text.substring(1).stripLeading();
+            if (rest.isEmpty()) lines.remove(i--);
+            else lines.set(i, rest);
+        }
+    }
  
      private void hardSplit(String token, int width, List<FormattedCharSequence> lines) {
          int start = 0;
@@ -457,11 +473,9 @@ public final class SequenceScreen extends Screen {
          return Component.literal(text).getVisualOrderText();
      }
  
-     private static boolean endsBreak(String token) {
-         if (token.isEmpty() || " ".equals(token)) return false;
-         char last = token.charAt(token.length() - 1);
-         return "。！？；，、.?!;,".indexOf(last) >= 0;
-     }
+    private static boolean isDanglingPunct(char current) {
+        return "。！？；，、：:）)】]".indexOf(current) >= 0;
+    }
  
      private static List<String> tokens(String text) {
          List<String> out = new ArrayList<>();

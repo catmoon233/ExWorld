@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "guimi_mod:item/six_winged_gargoyle_core_crystal"
+  }
+}

@@ -10,6 +10,8 @@ group = mod_group_id
 
 repositories {
     mavenLocal()
+    mavenCentral()
+    maven { url = 'https://maven.maxhenkel.de/repository/public' }
     maven {
         name "CaffeineMC"
         url "https://maven.caffeinemc.net/releases" // or /snapshots
@@ -43,49 +45,7 @@ tasks.withType(JavaCompile).configureEach {
 tasks.withType(ProcessResources).configureEach {
     filteringCharset = 'UTF-8'
 }
-sourceSets {
-    guimi {
-        java.srcDir '参考mod/Lord-of-the-Mysteries-Mod-main/src/main/java'
-        resources.srcDir '参考mod/Lord-of-the-Mysteries-Mod-main/src/main/resources'
-        compileClasspath += sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.runtimeClasspath
-    }
-    lotm {
-        java.srcDir 'lotm/src/main/java'
-        resources.srcDir 'lotm/src/main/resources'
-        compileClasspath += sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.runtimeClasspath
-    }
-    exkeys {
-        java.srcDir 'exkeys/src/main/java'
-        resources.srcDir 'exkeys/src/main/resources'
-        compileClasspath += sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.runtimeClasspath
-    }
-}
-// guimi_mod is lotm's required predecessor. It is compiled from the reference tree, not bundled into ExWorld.
-sourceSets.lotm.compileClasspath += sourceSets.main.output
-sourceSets.lotm.compileClasspath += sourceSets.guimi.output
-sourceSets.lotm.runtimeClasspath += sourceSets.main.output
-def guimiMetadataDir = layout.buildDirectory.dir('generated/guimi-metadata')
-def generateGuimiMetadata = tasks.register('generateGuimiMetadata', ProcessResources) {
-    def replaceProperties = [
-            minecraft_version      : '1.21.1',
-            minecraft_version_range: '[1.21.1]',
-            neo_version            : '21.1.233',
-            loader_version_range   : '[1,)',
-            mod_id                 : 'guimi_mod',
-            mod_name               : 'Guimimod',
-            mod_license            : 'All Rights Reserved',
-            mod_version            : '0.0.1',
-    ]
-    inputs.properties replaceProperties
-    from('参考mod/Lord-of-the-Mysteries-Mod-main/src/main/templates')
-    into guimiMetadataDir
-    expand replaceProperties
-}
-sourceSets.guimi.resources.srcDir(guimiMetadataDir)
-tasks.named('processGuimiResources').configure { dependsOn(generateGuimiMetadata) }
+apply from: 'gradle/companion-mods.gradle'
 
 
 neoForge {
@@ -107,6 +67,9 @@ neoForge {
         }
         exkeys {
             sourceSet(sourceSets.exkeys)
+        }
+        exphone {
+            sourceSet(sourceSets.exphone)
         }
     }
 
@@ -136,7 +99,7 @@ neoForge {
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
-            loadedMods.set([project.neoForge.mods.getByName(project.mod_id), project.neoForge.mods.guimi_mod, project.neoForge.mods.lotm, project.neoForge.mods.exkeys])
+            loadedMods.set([project.neoForge.mods.getByName(project.mod_id), project.neoForge.mods.guimi_mod, project.neoForge.mods.lotm, project.neoForge.mods.exkeys, project.neoForge.mods.exphone])
         }
     }
 }
@@ -148,13 +111,12 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 
-sourceSets.test.compileClasspath += sourceSets.lotm.output
-sourceSets.test.runtimeClasspath += sourceSets.lotm.output
-sourceSets.test.compileClasspath += sourceSets.exkeys.output
-sourceSets.test.runtimeClasspath += sourceSets.exkeys.output
 
 dependencies {
     implementation files("libs/exmodifier-1.0-SNAPSHOT.jar")
+    // Memory clips are bookmarks in ReForgedPlay's client-side .mcpr recordings.
+    compileOnly files("libs/reforgedplaymod-1.21.1-0.3.jar")
+    runtimeOnly files("libs/reforgedplaymod-1.21.1-0.3.jar")
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -172,11 +134,12 @@ dependencies {
 
     // Optional client-only compatibility surface; ExWorld uses reflection and does not bundle it.
     compileOnly files("libs/voicecastaddon-1.0.2.jar")
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:2.5.36"
     // Optional client-side integration. The bridge is loaded reflectively so ExWorld also runs
     // without NeoforgeSkyboxes installed; runtimeOnly makes the local client run use the jar in libs.
     compileOnly files("libs/NeoforgeSkyboxes-0.1.1+mc1.21.1.jar")
      runtimeOnly files("libs/NeoforgeSkyboxes-0.1.1+mc1.21.1.jar")
-     runtimeOnly files("libs/ApricityUI-neoforge-1.21.1-1.2.5-full.jar")
+    implementation files("libs/ApricityUI-neoforge-1.21.1-1.2.5-full.jar")
     compileOnly "net.caffeinemc:sodium-neoforge-api:0.8.13-beta.1+mc1.21.1"
     // The Maven `sodium-neoforge-mod` artifact is intentionally unwrapped. Do not put it on the
     // NeoForge runtime beside the full distribution JAR; their two JPMS modules export the same packages.
@@ -217,13 +180,13 @@ tasks.register('verifyNoDuplicateSodium') {
     }
 }
 
- tasks.register('syncPhoneApricity', Copy) {
-     from layout.projectDirectory.file('lotm/src/main/resources/assets/apricityui/apricity/lotm/phone.html')
-     into layout.projectDirectory.dir('run/apricity/lotm')
- }
- tasks.named('prepareClientRun') {
-     dependsOn tasks.named('verifyNoDuplicateSodium')
-    dependsOn 'compileLotmJava', 'processLotmResources', 'syncPhoneApricity', 'compileExkeysJava', 'processExkeysResources'
+tasks.register('syncPhoneApricity', Copy) {
+    from layout.projectDirectory.dir('exphone/src/main/resources/assets/apricityui/apricity/exphone')
+    into layout.projectDirectory.dir('run/apricity/exphone')
+}
+tasks.named('prepareClientRun') {
+    dependsOn tasks.named('verifyNoDuplicateSodium')
+    dependsOn 'compileLotmJava', 'processLotmResources', 'syncPhoneApricity', 'compileExkeysJava', 'processExkeysResources', 'compileExphoneJava', 'processExphoneResources'
  }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -324,41 +287,6 @@ idea {
     }
 }
 
-tasks.register('lotmJar', Jar) {
-    archiveBaseName = 'lotm'
-    from sourceSets.lotm.output
-}
-tasks.register('exkeysJar', Jar) {
-    archiveBaseName = 'exkeys'
-    from sourceSets.exkeys.output
-}
-
-tasks.register('guimiJar', Jar) {
-    group = 'build'
-    description = 'Packages guimi_mod.'
-    archiveBaseName = 'guimi_mod'
-    archiveVersion = '0.0.1'
-    from sourceSets.guimi.output
-}
-tasks.named('lotmJar') {
-    group = 'build'
-    description = 'Packages lotm.'
-}
-tasks.named('exkeysJar') {
-    group = 'build'
-    description = 'Packages exkeys.'
-}
-
-def exportedMods = layout.buildDirectory.dir('export')
-tasks.register('exportMods', Sync) {
-    group = 'build'
-    description = 'Builds exworld, guimi_mod, lotm, and exkeys, then copies the jars into build/export.'
-    into exportedMods
-    from(tasks.named('jar'))
-    from(tasks.named('guimiJar'))
-    from(tasks.named('lotmJar'))
-    from(tasks.named('exkeysJar'))
-}
 
 tasks.named('prepareServerRun') {
     dependsOn 'compileExkeysJava', 'processExkeysResources'
@@ -370,10 +298,35 @@ tasks.register('sequenceRankTest', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.sequence.SequenceRankHarness'
 }
-tasks.register('guimiPathwayTest', JavaExec) {
+
+tasks.register('tokenArgumentTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'net.exmo.lotm.sequence.GuimiPathwaysHarness'
+    mainClass = 'net.exmo.exworld.command.TokenArgumentHarness'
+}
+
+tasks.register('mysteryRulesTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.mystery.MysteryRulesHarness'
+}
+
+tasks.register('mysteryWorldReplayTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.mystery.WorldMemoryTrackHarness'
+}
+
+tasks.register('configUnloadingTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.ConfigUnloadingTestHarness'
+}
+
+tasks.register('networkRegistrationTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.lotm.NetworkRegistrationTestHarness'
 }
 
 tasks.register('cameraZoomTest', JavaExec) {
@@ -410,6 +363,12 @@ tasks.register('chunkGroupShapeTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.world.model.ChunkGroupShapeTestHarness'
+}
+
+tasks.register('boundarySlabTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.BoundarySlabsTestHarness'
 }
 
 tasks.register('battleRulesTest', JavaExec) {
@@ -514,6 +473,12 @@ tasks.register('manualChunkGroupLayoutTest', JavaExec) {
     mainClass = 'net.exmo.exworld.world.model.ManualChunkGroupLayoutTestHarness'
 }
 
+tasks.register('groupEditorSyncTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.world.model.GroupEditorSyncTestHarness'
+}
+
 tasks.register('questDefinitionTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
@@ -579,6 +544,12 @@ tasks.register('exModifierTooltipModelTest', JavaExec) {
     mainClass = 'net.exmo.exworld.client.tooltip.ExModifierTooltipModelTestHarness'
 }
 
+tasks.register('guimiItemTagsTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.exworld.client.tooltip.GuimiItemTagsTestHarness'
+}
+
 tasks.register('inventoryGridTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
@@ -617,6 +588,12 @@ tasks.register('webview2Smoke', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'net.exmo.exworld.client.webview.WebView2Smoke'
     args '--window'
+}
+
+tasks.register('phoneLayoutResourceTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'net.exmo.lotm.phone.PhoneLayoutResourceTestHarness'
 }
 
 def exkeysPolicyTestClasses = layout.buildDirectory.dir('exkeys-policy-test')

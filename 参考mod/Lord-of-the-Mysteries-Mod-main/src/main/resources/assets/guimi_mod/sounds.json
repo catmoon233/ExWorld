@@ -1,0 +1,73 @@
+{
+  "hallucination": {
+    "replace": false,
+    "sounds": [
+      {
+        "name": "guimi_mod:hallucination_01",
+        "weight": 1
+      },
+      {
+        "name": "guimi_mod:hallucination_02",
+        "weight": 2
+      }
+
+
+
+    ]
+  },
+  "mermaid_song": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.mermaid_song",
+    "sounds": [
+      {
+        "name": "guimi_mod:mermaid_song",
+        "stream": true
+      }
+    ]
+  },
+  "mad_whisper": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.mad_whisper",
+    "sounds": [
+      {
+        "name": "guimi_mod:mad_whisper"
+      }
+    ]
+  },
+  "gun_fire": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.gun_fire",
+    "sounds": [
+      {
+        "name": "guimi_mod:gun_fire"
+      }
+    ]
+  },
+  "gun_reload": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.gun_reload",
+    "sounds": [
+      {
+        "name": "guimi_mod:gun_reload"
+      }
+    ]
+  },
+  "gun_empty": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.gun_empty",
+    "sounds": [
+      {
+        "name": "guimi_mod:gun_empty"
+      }
+    ]
+  },
+  "wolfman_attack": {
+    "replace": false,
+    "subtitle": "subtitles.guimi_mod.wolfman_attack",
+    "sounds": [
+      {
+        "name": "guimi_mod:wolfman_attack"
+      }
+    ]
+  }
+}

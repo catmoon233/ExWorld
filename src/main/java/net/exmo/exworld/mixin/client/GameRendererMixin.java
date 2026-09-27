@@ -14,5 +14,7 @@ public abstract class GameRendererMixin {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void exworld$cinematicFov(Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Double> callback) {
         if (AdvancedCameraDirector.active()) callback.setReturnValue((double) AdvancedCameraDirector.fov(partialTick));
+        else if (net.exmo.exworld.mystery.client.MysteryCamera.active())
+            callback.setReturnValue((double) net.exmo.exworld.mystery.client.MysteryCamera.fov(partialTick));
     }
 }

@@ -15,17 +15,24 @@ public final class KeyPolicyTestHarness {
         if (policy.with(longId, true, true) != policy) fail("invalid id is ignored");
         if (policy.with("key mod.with space", true, false).hides("key mod.with space") == false) fail("spaces in key ids are allowed");
 
-        KeyPolicy locked = policy.withConfigOpOnly(true);
-        if (!locked.configOpOnly() || !locked.hides("key.jump")) fail("visibility flag keeps the key rules");
-        if (!locked.with("key.drop", true, false).configOpOnly()) fail("editing a bind keeps the visibility flag");
-        if (locked.showConfigTo(false, false)) fail("op-only hides the button from regular players");
-        if (!locked.showConfigTo(false, true) || !locked.showConfigTo(true, false)) fail("owner and operator still see the button");
-        if (!policy.showConfigTo(false, false)) fail("open mode shows the button to everyone");
-        KeyPolicy.ParseResult round = KeyPolicy.parse(locked.toJson(), true);
-        if (!round.ok() || !round.policy().hides("key.jump") || !round.policy().configOpOnly()) {
-            fail("json round trip lost a flag");
+        KeyPolicy opOnly = policy.with("key.drop", false, false, true, true);
+        if (opOnly.hides("key.drop") || opOnly.blocks("key.drop")) fail("op-only flags are not absolute");
+        if (!opOnly.opTrigger("key.drop") || !opOnly.opDisplay("key.drop")) fail("op-only flags are stored");
+        if (opOnly.hiddenFrom("key.drop", true) || !opOnly.hiddenFrom("key.drop", false)) fail("op display hides only non-operators");
+        if (opOnly.blockedFor("key.drop", true) || !opOnly.blockedFor("key.drop", false)) fail("op trigger blocks only non-operators");
+        if (!policy.hiddenFrom("key.jump", true) || !policy.blockedFor("key.inventory", true)) fail("absolute flags still apply to operators");
+        if (opOnly.with("key.drop", true, true, true, true).rule("key.drop").opDisplay()) fail("hide overrides op display");
+        if (opOnly.with("key.drop", true, true, true, true).rule("key.drop").opTrigger()) fail("block overrides op trigger");
+        if (opOnly.with("key.drop", false, false, false, false).ids().contains("key.drop")) fail("clearing every flag removes the rule");
+        KeyPolicy.ParseResult round = KeyPolicy.parse(opOnly.toJson(), true);
+        if (!round.ok() || !round.policy().opTrigger("key.drop") || !round.policy().opDisplay("key.drop") || round.policy().toJson().contains("configOpOnly")) {
+            fail("json round trip lost an op-only flag");
         }
-        if (!KeyPolicy.parse("{\"configOpOnly\":true}", true).policy().configOpOnly()) fail("visibility flag without entries");
+        KeyPolicy legacy = KeyPolicy.parse("{\"configOpOnly\":true,\"entries\":{\"key.jump\":{\"hide\":true}}}", true).policy();
+        if (!legacy.hides("key.jump") || legacy.toJson().contains("configOpOnly")) fail("legacy visibility flag is ignored");
+        if (!KeyPolicy.parse("{\"entries\":{\"key.use\":{\"opTrigger\":true}}}", true).policy().blockedFor("key.use", false)) {
+            fail("op trigger without other flags still blocks non-operators");
+        }
         if (KeyPolicy.parse("{\"entries\":{\"" + longId + "\":{\"hide\":true}}}", true).ok()) fail("strict parse rejects bad ids");
         if (!KeyPolicy.parse("{\"entries\":{\"bad id\":{\"hide\":true},\"key.drop\":{\"block\":true}}}", false).policy().blocks("key.drop")) {
             fail("lenient parse keeps valid ids");

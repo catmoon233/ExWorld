@@ -1,6 +1,7 @@
 package net.exmo.exworld.social;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -17,7 +18,7 @@ public final class ExworldHelp {
         event.getDispatcher().register(Commands.literal("exworld")
                 .then(Commands.literal("help")
                         .executes(context -> show(context.getSource(), ""))
-                        .then(Commands.argument("topic", StringArgumentType.word())
+                        .then(Commands.argument("topic", TokenArgument.token())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(ExworldHelpCatalog.ids(), builder))
                                 .executes(context -> show(context.getSource(), StringArgumentType.getString(context, "topic")))))
                 .then(Commands.literal("chat").executes(context -> NearbyChat.open(context.getSource()))));

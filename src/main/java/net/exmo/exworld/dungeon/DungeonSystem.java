@@ -1,6 +1,7 @@
 package net.exmo.exworld.dungeon;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.exmo.exworld.Exworld;
 import net.exmo.exworld.content.ExWorldContent;
 import net.exmo.exworld.battle.BattleSession;
@@ -168,7 +169,7 @@ public final class DungeonSystem {
     private static void sync(List<ServerPlayer> players,DungeonRun run,String roomId){for(ServerPlayer player:players)BattleNetwork.sendDungeon(player,run.snapshot(roomId));}
     @SubscribeEvent public static void commands(RegisterCommandsEvent event){
         event.getDispatcher().register(Commands.literal("exworld").then(Commands.literal("dungeon")
-                .then(Commands.literal("enter").then(Commands.argument("id",StringArgumentType.word())
+                .then(Commands.literal("enter").then(Commands.argument("id",TokenArgument.token())
                         .executes(c->enter(c.getSource().getPlayerOrException(),StringArgumentType.getString(c,"id")))))
                 .then(Commands.literal("status").executes(c->{ServerPlayer p=c.getSource().getPlayerOrException();DungeonRun r=run(p.getUUID()).orElse(null);p.sendSystemMessage(Component.literal(r==null?"No dungeon run":r.snapshot("current").toString()));return r==null?0:1;}))
                 .then(Commands.literal("leave").executes(c->leave(c.getSource().getPlayerOrException())))

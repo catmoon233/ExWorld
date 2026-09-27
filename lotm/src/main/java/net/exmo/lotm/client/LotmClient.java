@@ -23,6 +23,6 @@ public final class LotmClient {
         NeoForge.EVENT_BUS.addListener(MindScrambleClient::input);
         NeoForge.EVENT_BUS.addListener(SpiritVisionClient::tick);
         NeoForge.EVENT_BUS.addListener(SpiritVisionClient::render);
-        NeoForge.EVENT_BUS.addListener(net.exmo.lotm.client.phone.MapWandOverlay::render);
+        net.exmo.lotm.client.story.StoryClient.install();
     }
 }

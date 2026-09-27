@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "guimi_mod:currency",
+  "ingredients": [
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" },
+    { "item": "guimi_mod:penny" }
+  ],
+  "result": {
+    "id": "guimi_mod:soyle",
+    "count": 1
+  }
+}

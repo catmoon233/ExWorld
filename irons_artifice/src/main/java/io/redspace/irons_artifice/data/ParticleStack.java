@@ -13,9 +13,16 @@ public class ParticleStack implements Copyable<ParticleStack> {
     public record ParticleAccent(ParticleOptions options, double chance) {
     }
 
-    private static final List<ParticleOptions> EMPTY = List.of(new ColorTransitionParticleOption(
-            ParticleRegistry.BULLET_TRAIL.get(), 0xffc600, 0x04f0b00, 1f, 0f, 1f, 1f, 0.5f, 0f, 0
-    ));
+    private static List<ParticleOptions> empty;
+
+    private static List<ParticleOptions> empty() {
+        if (empty == null) {
+            empty = List.of(new ColorTransitionParticleOption(
+                    ParticleRegistry.BULLET_TRAIL.get(), 0xffc600, 0x04f0b00, 1f, 0f, 1f, 1f, 0.5f, 0f, 0
+            ));
+        }
+        return empty;
+    }
     private final List<ParticleOptions> particles = new ArrayList<>();
     private final Set<ParticleAccent> accents = new HashSet<>();
 
@@ -28,7 +35,7 @@ public class ParticleStack implements Copyable<ParticleStack> {
     }
 
     public List<ParticleOptions> getParticles() {
-        return List.copyOf(particles.isEmpty() ? EMPTY : particles);
+        return List.copyOf(particles.isEmpty() ? empty() : particles);
     }
 
     public List<ParticleAccent> getAccents() {

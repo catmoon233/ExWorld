@@ -118,9 +118,20 @@ public final class PlayerBackpackMenu extends AbstractContainerMenu {
             addSlot(new Slot(data, PlayerBackpackData.ACCESSORY_START + i,
                     InventoryLayout.ACCESSORY_X + col * InventoryLayout.CELL,
                     InventoryLayout.ACCESSORY_Y + row * InventoryLayout.CELL) {
-                @Override public boolean isActive() { return accessoryPage(); }
+                @Override public boolean isActive() {
+                    return accessoryPage() && !(FMLEnvironment.dist.isClient() && CuriosPresence.loaded());
+                }
             });
         }
+    }
+
+    public void clickAccessory(int index) {
+        if (index < 0 || index >= PlayerBackpackData.ACCESSORY_COUNT) return;
+        ItemStack current = backpack.data().accessory(index);
+        ItemStack carried = getCarried();
+        backpack.data().setAccessory(index, carried.isEmpty() ? ItemStack.EMPTY : carried.copy());
+        setCarried(current.copy());
+        broadcastChanges();
     }
 
     @Override

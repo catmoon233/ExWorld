@@ -2,6 +2,7 @@ package net.exmo.exworld.monster;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -16,12 +17,12 @@ public final class MonsterCommands {
         var monsters = Commands.literal("monsters").requires(source -> source.hasPermission(2));
         monsters.then(Commands.literal("packages").executes(context -> list(context.getSource())));
         monsters.then(Commands.literal("reload").executes(context -> reload(context.getSource())));
-        monsters.then(Commands.literal("edit").then(Commands.argument("package", StringArgumentType.word()).executes(context -> edit(context.getSource(), StringArgumentType.getString(context, "package")))));
-        monsters.then(Commands.literal("enable").then(Commands.argument("package", StringArgumentType.word()).executes(context -> enabled(context.getSource(), StringArgumentType.getString(context, "package"), true))));
-        monsters.then(Commands.literal("disable").then(Commands.argument("package", StringArgumentType.word()).executes(context -> enabled(context.getSource(), StringArgumentType.getString(context, "package"), false))));
-        monsters.then(Commands.literal("move").then(Commands.argument("package", StringArgumentType.word()).then(Commands.argument("index", IntegerArgumentType.integer(0)).executes(context -> move(context.getSource(), StringArgumentType.getString(context, "package"), IntegerArgumentType.getInteger(context, "index"))))));
-        monsters.then(Commands.literal("import").then(Commands.argument("file", StringArgumentType.word()).executes(context -> importPackage(context.getSource(), StringArgumentType.getString(context, "file")))));
-        monsters.then(Commands.literal("export").then(Commands.argument("package", StringArgumentType.word()).executes(context -> exportPackage(context.getSource(), StringArgumentType.getString(context, "package")))));
+        monsters.then(Commands.literal("edit").then(Commands.argument("package", TokenArgument.token()).executes(context -> edit(context.getSource(), StringArgumentType.getString(context, "package")))));
+        monsters.then(Commands.literal("enable").then(Commands.argument("package", TokenArgument.token()).executes(context -> enabled(context.getSource(), StringArgumentType.getString(context, "package"), true))));
+        monsters.then(Commands.literal("disable").then(Commands.argument("package", TokenArgument.token()).executes(context -> enabled(context.getSource(), StringArgumentType.getString(context, "package"), false))));
+        monsters.then(Commands.literal("move").then(Commands.argument("package", TokenArgument.token()).then(Commands.argument("index", IntegerArgumentType.integer(0)).executes(context -> move(context.getSource(), StringArgumentType.getString(context, "package"), IntegerArgumentType.getInteger(context, "index"))))));
+        monsters.then(Commands.literal("import").then(Commands.argument("file", TokenArgument.token()).executes(context -> importPackage(context.getSource(), StringArgumentType.getString(context, "file")))));
+        monsters.then(Commands.literal("export").then(Commands.argument("package", TokenArgument.token()).executes(context -> exportPackage(context.getSource(), StringArgumentType.getString(context, "package")))));
         dispatcher.register(Commands.literal("exworld").then(monsters));
     }
     private static MonsterProfileRegistry registry(CommandSourceStack source) { return MonsterProfileRegistry.active().orElseThrow(() -> new IllegalStateException("monster registry is not ready")); }

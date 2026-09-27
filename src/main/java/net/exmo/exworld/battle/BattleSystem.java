@@ -3,6 +3,7 @@ package net.exmo.exworld.battle;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.damage.SpellDamageSource;
@@ -71,6 +72,7 @@ import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.monster.Vex;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -441,7 +443,10 @@ public final class BattleSystem {
             boolean structuralUpdate = snapshot.revision() != LAST_SYNCED_REVISIONS.getOrDefault(snapshot.battleId(), -1L)
                     || seconds != LAST_SYNCED_SECONDS.getOrDefault(snapshot.battleId(), -1);
             boolean movementUpdate = !snapshot.motions().isEmpty();
-            if (structuralUpdate) {
+            // Only dungeon-hosted battles are durable content. Dev encounters (fight debug, demos) are
+            // tools: persisting them resurrects their participants after every restart, which re-arms the
+            // battle damage gate and leaves those players immune to all world damage and /kill.
+            if (structuralUpdate && session.request().host().dungeon()) {
                 saved(event.getServer()).put(snapshot.battleId().value(), BattleNbtCodec.save(session));
                 LAST_SYNCED_REVISIONS.put(snapshot.battleId(), snapshot.revision());
                 LAST_SYNCED_SECONDS.put(snapshot.battleId(), seconds);
@@ -514,16 +519,16 @@ public final class BattleSystem {
                                 .then(Commands.literal("grant_all").executes(context -> grantAllCards(context.getSource().getPlayerOrException())))
                                 .then(Commands.literal("reset_starter").executes(context -> resetStarterCards(context.getSource().getPlayerOrException())))
                                 .then(Commands.literal("list").executes(context -> listDebugCards(context.getSource().getPlayerOrException())))
-                                .then(Commands.literal("give").then(Commands.argument("card", StringArgumentType.word()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
+                                .then(Commands.literal("give").then(Commands.argument("card", TokenArgument.token()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
                                         .executes(context -> giveCard(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "card"), 1))
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 999))
                                                 .executes(context -> giveCard(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "card"), IntegerArgumentType.getInteger(context, "amount"))))))
                                 .then(Commands.literal("deck")
                                         .then(Commands.literal("show").executes(context -> showDeck(context.getSource().getPlayerOrException())))
                                         .then(Commands.literal("clear").executes(context -> clearDeck(context.getSource().getPlayerOrException())))
-                                        .then(Commands.literal("add").then(Commands.argument("card", StringArgumentType.word()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
+                                        .then(Commands.literal("add").then(Commands.argument("card", TokenArgument.token()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
                                                 .executes(context -> addDeckCard(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "card")))))
-                                        .then(Commands.literal("remove").then(Commands.argument("card", StringArgumentType.word()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
+                                        .then(Commands.literal("remove").then(Commands.argument("card", TokenArgument.token()).suggests((context, builder) -> SharedSuggestionProvider.suggest(SKILLS.allCardIds(), builder))
                                                 .executes(context -> removeDeckCard(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "card")))))))));
     }
 
@@ -610,6 +615,9 @@ public final class BattleSystem {
     @SubscribeEvent public static void onDamage(LivingIncomingDamageEvent event) {
         if (isParticipating(event.getEntity().getUUID())) {
             if (BattleDamageContext.active()) return;
+            // /kill (genericKill) must always land so a participant can never be held immortal by the
+            // battle gate; the resulting death is handled by onBattleDeath below.
+            if (event.getSource().is(DamageTypes.GENERIC_KILL)) return;
             Entity source = responsibleAttacker(event.getSource());
             String sourceSkill = event.getSource() instanceof SpellDamageSource spellDamage
                     ? "iron:" + spellDamage.spell().getSpellId() : null;
@@ -650,10 +658,20 @@ public final class BattleSystem {
         return direct;
     }
     @SubscribeEvent public static void onBattleDeath(LivingDeathEvent event) {
-        if (!BattleDamageContext.active() || !isParticipating(event.getEntity().getUUID())) return;
-        BattleDamageContext.markFatal();
-        event.setCanceled(true);
-        event.getEntity().setHealth(1.0F);
+        if (!isParticipating(event.getEntity().getUUID())) return;
+        if (BattleDamageContext.active()) {
+            BattleDamageContext.markFatal();
+            event.setCanceled(true);
+            event.getEntity().setHealth(1.0F);
+            return;
+        }
+        // A participant died outside battle-authorized damage (e.g. /kill, void, fall). Resolve the
+        // session as a defeat so the participant is released and the battle damage gate can never hold
+        // them immortal. The actual respawn/return is handled by the normal result flow.
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        battleOf(player.getUUID()).flatMap(ENGINE::session)
+                .filter(session -> !session.snapshot().state().terminal())
+                .ifPresent(session -> session.finishDebug(BattleResult.Outcome.DEFEAT));
     }
     @SubscribeEvent public static void onBattleHeal(LivingHealEvent event) {
         if (isParticipating(event.getEntity().getUUID()) && !BattleDamageContext.active()) event.setCanceled(true);
@@ -1219,7 +1237,16 @@ public final class BattleSystem {
                             .orElseGet(() -> ArenaDefinition.flat(tag.getString("arena"), 18, tag.getInt("host_floor_y")));
                     ENGINE.registerArena(restoredArena); return restoredArena;
                 });
-                BattleSession session = BattleNbtCodec.load(tag, arena, SKILLS.snapshot(), EFFECTS); ENGINE.restore(session);
+                BattleSession session = BattleNbtCodec.load(tag, arena, SKILLS.snapshot(), EFFECTS);
+                // Dev/test encounters are tools, not resumable content. Resurrecting one re-marks its
+                // participants as battle participants, which gates all world damage and death for those
+                // players; drop the stale session (and its save) instead so a leftover debug battle can
+                // never trap a player in the invulnerable state.
+                if (!session.request().host().dungeon()) {
+                    saved(server).remove(session.id().value());
+                    continue;
+                }
+                ENGINE.restore(session);
                 List<ServerPlayer> onlinePlayers = session.combatants().stream().map(Combatant::playerId).filter(Objects::nonNull)
                         .map(id -> server.getPlayerList().getPlayer(id)).filter(Objects::nonNull).toList();
                 attachPlayerSystems(session, onlinePlayers, false);

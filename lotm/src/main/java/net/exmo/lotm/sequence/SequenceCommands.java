@@ -1,6 +1,7 @@
 package net.exmo.lotm.sequence;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -28,7 +29,7 @@ public final class SequenceCommands {
                                 .then(Commands.argument("pathway", ResourceLocationArgument.id())
                                         .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
                                                 SequenceRegistry.pathwayIds(), builder))
-                                        .then(Commands.argument("rank", StringArgumentType.word())
+                                        .then(Commands.argument("rank", TokenArgument.token())
                                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                                         SequenceRegistry.rankSuggestions(
                                                                 ResourceLocationArgument.getId(context, "pathway")), builder))

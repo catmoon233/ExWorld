@@ -154,11 +154,13 @@ public final class TooltipRenderer {
         }
 
         int tagX = textX + titleW + TooltipLayout.TAG_GAP;
-        for (NameTag tag : tagRows.getFirst()) {
-            int bg = tag.color() | 0xCC000000;
-            int fg = RarityPalette.isCommon(tag.color()) ? RarityPalette.contrastText(tag.color()) : theme.badgeCutout();
-            tagX = TooltipPainter.drawBadge(graphics, font, tag.label(), tagX, titleY, bg, fg, contentLeft, contentRight)
-                    + TooltipLayout.TAG_GAP;
+        if (!tagRows.isEmpty()) {
+            for (NameTag tag : tagRows.getFirst()) {
+                int bg = tag.color() | 0xCC000000;
+                int fg = RarityPalette.isCommon(tag.color()) ? RarityPalette.contrastText(tag.color()) : theme.badgeCutout();
+                tagX = TooltipPainter.drawBadge(graphics, font, tag.label(), tagX, titleY, bg, fg, contentLeft, contentRight)
+                        + TooltipLayout.TAG_GAP;
+            }
         }
         if (!model.rarityLabel().isEmpty()) {
             graphics.drawString(font, model.rarityLabel(), textX, rarityY, accent, false);

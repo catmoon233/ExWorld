@@ -6,6 +6,11 @@
   "mixins": [
     "AbstractSpellLearnedMixin"
   ],
+  "client": [
+    "client.NightSkyColorMixin",
+    "client.NightSkyLightmapMixin",
+    "client.NightSkyMoonMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },

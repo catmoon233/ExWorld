@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "guimi_mod:item/evil_panther_spinal_fluid"
+  }
+}

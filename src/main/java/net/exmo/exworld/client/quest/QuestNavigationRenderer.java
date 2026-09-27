@@ -20,6 +20,7 @@ public final class QuestNavigationRenderer {
     }
 
     private static void render(GuiGraphics graphics) {
+        if (net.exmo.exworld.mystery.client.MysteryClient.inGame()) return;
         if (BattleClient.active()) return;
         var minecraft = Minecraft.getInstance();
         var quest = QuestClient.navigation().orElse(null);

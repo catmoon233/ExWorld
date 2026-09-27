@@ -7,6 +7,7 @@ import net.exmo.exworld.world.model.ManualChunkGroupLayout;
 import net.exmo.exworld.world.model.MapRegion;
 import net.exmo.exworld.world.model.MapTile;
 import net.exmo.exworld.world.model.WorldSnapshot;
+import net.exmo.exworld.world.model.GroupEditorSync;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -59,7 +60,13 @@ public final class WorldGroupEditorScreen extends Screen {
     private final Map<String, DraftGroup> groups = new LinkedHashMap<>();
     private final Map<String, String> tileOwners = new LinkedHashMap<>();
     private final Set<String> selectedTiles = new LinkedHashSet<>();
-
+    private final Set<String> dragBase = new LinkedHashSet<>();
+    private boolean dragSelecting;
+    private int dragStartX;
+    private int dragStartZ;
+    private int dragEndX;
+    private int dragEndZ;
+    private final boolean blankMap;
     private boolean manualGroups;
     private String activeGroupId;
     private EditBox groupName;
@@ -77,7 +84,8 @@ public final class WorldGroupEditorScreen extends Screen {
         super(Component.literal("区域组编辑"));
         this.snapshot = payload.snapshot();
         this.serverError = payload.error();
-        this.manualGroups = snapshot.manualGroups();
+        this.blankMap = payload.blankMap();
+        this.manualGroups = snapshot.manualGroups() || blankMap;
         snapshot.tiles().forEach(tile -> {
             tilesById.put(tile.id(), tile);
             tilesByCoordinate.put(key(tile.mapX(), tile.mapZ()), tile);
@@ -97,14 +105,16 @@ public final class WorldGroupEditorScreen extends Screen {
                     region.resources(), region.configured(), region.cannotLeave())).tileIds.add(tile.id());
         }
         rebuildOwners();
-        activeGroupId = groups.keySet().stream().findFirst().orElse(null);
+        activeGroupId = groups.values().stream()
+                .filter(group -> GroupEditorSync.listed(blankMap, group.configured, false, false))
+                .map(group -> group.id).findFirst().orElse(null);
     }
 
     @Override
     protected void init() {
         Layout layout = layout();
         Sidebar sb = layout.sidebar;
-        if (biomeAtlas == null) biomeAtlas = new BiomeAtlasTexture(snapshot);
+        if (biomeAtlas == null && paintAutomaticBiomes()) biomeAtlas = new BiomeAtlasTexture(snapshot);
         if (groupAtlas == null) refreshAtlas();
 
         DraftGroup group = active().orElse(null);
@@ -149,9 +159,7 @@ public final class WorldGroupEditorScreen extends Screen {
         graphics.fill(8, 36, layout.mapRight(), height - 14, 0xFF0F171B);
         graphics.fill(layout.sidebar.x - 6, 36, width - 8, height - 14, 0xFF131C21);
         graphics.drawString(font, title, 12, 12, IVORY, false);
-        graphics.drawString(font, manualGroups ? "手动模式：未归组世界格会在保存时变为单格组。"
-                        : "自动模式：保存时按群系斑块重新生成分组（详情不可编辑）。", 12, 24,
-                manualGroups ? MUTED : 0xFFFF986E, false);
+        graphics.drawString(font, modeLine(), 12, 24, blankMap || manualGroups ? MUTED : 0xFFFF986E, false);
 
         MapTile hovered = tileAt(mouseX, mouseY, layout);
         renderMap(graphics, layout, hovered);
@@ -164,22 +172,70 @@ public final class WorldGroupEditorScreen extends Screen {
     private void renderMap(GuiGraphics graphics, Layout layout, MapTile hovered) {
         double cell = cellSize(layout);
         graphics.enableScissor(layout.mapLeft, layout.mapTop, layout.mapWidth, layout.mapHeight);
-        TileRect atlas = atlasRect(layout, cell);
-        if (biomeAtlas != null) {
-            graphics.blit(biomeAtlas.location(), atlas.x(), atlas.y(), 0, 0, atlas.width(), atlas.height(),
-                    MapViewport.atlasTextureExtent(atlas.width()), MapViewport.atlasTextureExtent(atlas.height()));
+        if (blankMap) {
+            renderBlankMap(graphics, layout, cell);
+        } else if (snapshot.archipelago()) {
+            renderArchipelagoMap(graphics, layout, cell);
+        } else {
+            TileRect atlas = atlasRect(layout, cell);
+            if (biomeAtlas != null) {
+                graphics.blit(biomeAtlas.location(), atlas.x(), atlas.y(), 0, 0, atlas.width(), atlas.height(),
+                        MapViewport.atlasTextureExtent(atlas.width()), MapViewport.atlasTextureExtent(atlas.height()));
+            }
+            if (groupAtlas != null) {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+                graphics.blit(groupAtlas.location(), atlas.x(), atlas.y(), 0, 0, atlas.width(), atlas.height(),
+                        MapViewport.atlasTextureExtent(atlas.width()), MapViewport.atlasTextureExtent(atlas.height()));
+            }
         }
-        if (groupAtlas != null) {
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-            graphics.blit(groupAtlas.location(), atlas.x(), atlas.y(), 0, 0, atlas.width(), atlas.height(),
-                    MapViewport.atlasTextureExtent(atlas.width()), MapViewport.atlasTextureExtent(atlas.height()));
-        }
-        if (cell >= 5.0) renderGroupOutlines(graphics, layout, cell);
+        if (!blankMap && cell >= 5.0) renderGroupOutlines(graphics, layout, cell);
+        if (dragSelecting) renderDragBox(graphics, layout, cell);
         if (cell >= 2.0) renderSelection(graphics, layout, cell, hovered);
         if (cell >= 6.0) renderGroupIcons(graphics, layout, cell);
         graphics.disableScissor();
         outline(graphics, new TileRect(layout.mapLeft, layout.mapTop, layout.mapWidth, layout.mapHeight), 1, 0xFF5E676B);
+    }
+
+    /** Same rule as the decryption M map: unconfigured automatic zones stay void. */
+    private void renderBlankMap(GuiGraphics graphics, Layout layout, double cell) {
+        VisibleRange range = visibleRange(layout, cell);
+        if (range.tileCount() > 2_048) return;
+        int thickness = cell >= 10.0 ? 2 : 1;
+        for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
+            for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
+                MapTile tile = tilesByCoordinate.get(key(mapX, mapZ));
+                DraftGroup group = tile == null ? null : groups.get(ownerOf(tile));
+                if (group == null || !group.configured) continue;
+                TileRect rect = tileRect(tile, layout, cell);
+                graphics.fill(rect.x + 1, rect.y + 1, Math.max(rect.x + 2, rect.right() - 1),
+                        Math.max(rect.y + 2, rect.bottom() - 1), 0x66000000 | groupColor(group.id));
+                int color = 0xE6000000 | darken(groupColor(group.id), 0.42);
+                int mask = outlineMask(tile);
+                if ((mask & NORTH) != 0) graphics.fill(rect.x, rect.y, rect.right(), rect.y + thickness, color);
+                if ((mask & SOUTH) != 0) graphics.fill(rect.x, rect.bottom() - thickness, rect.right(), rect.bottom(), color);
+                if ((mask & WEST) != 0) graphics.fill(rect.x, rect.y, rect.x + thickness, rect.bottom(), color);
+                if ((mask & EAST) != 0) graphics.fill(rect.right() - thickness, rect.y, rect.right(), rect.bottom(), color);
+            }
+        }
+    }
+
+    /** Same picture as the archipelago M map: explored island regions, not the generated biome grid. */
+    private void renderArchipelagoMap(GuiGraphics graphics, Layout layout, double cell) {
+        VisibleRange range = visibleRange(layout, cell);
+        if (range.tileCount() > 2_048) return;
+        for (int mapZ = range.minZ; mapZ <= range.maxZ; mapZ++) {
+            for (int mapX = range.minX; mapX <= range.maxX; mapX++) {
+                MapTile tile = tilesByCoordinate.get(key(mapX, mapZ));
+                if (tile == null) continue;
+                TileRect rect = tileRect(tile, layout, cell);
+                graphics.fill(rect.x + 1, rect.y + 1, Math.max(rect.x + 2, rect.right() - 1),
+                        Math.max(rect.y + 2, rect.bottom() - 1), 0x38000000 | darken(groupColorOf(tile), 0.30));
+                if (tile.island() && cell >= 6.0 && rect.width >= 14) {
+                    graphics.drawCenteredString(font, tile.sites(), rect.centerX(), rect.centerY() - 4, islandColor(tile.sites()));
+                }
+            }
+        }
     }
 
     private void renderGroupOutlines(GuiGraphics graphics, Layout layout, double cell) {
@@ -248,9 +304,9 @@ public final class WorldGroupEditorScreen extends Screen {
     private void renderSidebar(GuiGraphics graphics, Layout layout, int mouseX, int mouseY) {
         Sidebar sb = layout.sidebar;
         renderButton(graphics, sb.x + 8, sb.modeY, sb.width - 16, 20,
-                "分组模式：" + (manualGroups ? "手动" : "自动"), true,
+                "分组模式：" + (manualGroups ? "手动" : "自动"), !blankMap,
                 inRect(mouseX, mouseY, sb.x + 8, sb.modeY, sb.width - 16, 20));
-        graphics.drawString(font, "区域组列表（" + groups.size() + "）", sb.x + 8, sb.listHeaderY, GOLD, false);
+        graphics.drawString(font, "区域组列表（" + orderedGroups().size() + "）", sb.x + 8, sb.listHeaderY, GOLD, false);
         renderButton(graphics, sb.x + sb.width - 78, sb.listHeaderY - 3, 70, 16, "＋ 新建组",
                 manualGroups && !selectedTiles.isEmpty(),
                 inRect(mouseX, mouseY, sb.x + sb.width - 78, sb.listHeaderY - 3, 70, 16));
@@ -344,15 +400,18 @@ public final class WorldGroupEditorScreen extends Screen {
 
     private void renderFooterHint(GuiGraphics graphics) {
         if (!serverError.isBlank()) graphics.drawString(font, "保存被拒绝：" + serverError, 12, height - 36, DANGER, false);
-        graphics.drawString(font, "左键选择 · Shift 多选 · 右键拆分为单格 · 中键拖动 · 滚轮缩放", 12, height - 22, MUTED, false);
+        graphics.drawString(font, "左键拖选 · Shift 追加 · 右键拆分为单格 · 中键拖动 · 滚轮缩放", 12, height - 22, MUTED, false);
     }
 
     private void renderTileTooltip(GuiGraphics graphics, MapTile tile, int mouseX, int mouseY) {
         List<Component> lines = new ArrayList<>();
         DraftGroup group = groups.get(ownerOf(tile));
-        if (group != null) lines.add(Component.literal(group.name).withColor(GOLD));
-        lines.add(Component.literal(tile.biome().displayName()).withColor(0xFFC7CDCF));
-        if (group != null && !group.site.isBlank()) lines.add(Component.literal("据点：" + group.site).withColor(MUTED));
+        boolean hidden = blankMap && (group == null || !group.configured);
+        if (group != null && !hidden) lines.add(Component.literal(group.name).withColor(GOLD));
+        else if (hidden) lines.add(Component.literal("虚无（未在 M 地图显示）").withColor(MUTED));
+        if (!blankMap && !snapshot.archipelago()) lines.add(Component.literal(tile.biome().displayName()).withColor(0xFFC7CDCF));
+        else if (tile.island()) lines.add(Component.literal(tile.sites()).withColor(0xFFC7CDCF));
+        if (group != null && !hidden && !group.site.isBlank()) lines.add(Component.literal("据点：" + group.site).withColor(MUTED));
         graphics.renderTooltip(font, lines, Optional.empty(), mouseX, mouseY);
     }
 
@@ -371,13 +430,23 @@ public final class WorldGroupEditorScreen extends Screen {
             if (clickActionButton(mouseX, mouseY, layout)) return true;
         }
         MapTile tile = tileAt(mouseX, mouseY, layout);
-        if (tile != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) { selectTile(tile, hasShiftDown()); return true; }
-        if (tile != null && button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && manualGroups) { splitTile(tile); return true; }
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && inMap(mouseX, mouseY, layout)) {
+            int[] coordinate = mapCoordinate(mouseX, mouseY, layout);
+            beginDrag(coordinate[0], coordinate[1], hasShiftDown());
+            setDragging(true);
+            return true;
+        }
+        if (tile != null && button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && manualGroups && shownOnMap(tile)) { splitTile(tile); return true; }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (dragSelecting && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            int[] coordinate = mapCoordinate(mouseX, mouseY, layout());
+            applyDrag(coordinate[0], coordinate[1]);
+            return true;
+        }
         if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && inMap(mouseX, mouseY, layout())) {
             double cell = cellSize(layout());
             viewCenterX -= dragX / cell;
@@ -385,6 +454,17 @@ public final class WorldGroupEditorScreen extends Screen {
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && dragSelecting) {
+            dragSelecting = false;
+            setDragging(false);
+            focusSelection();
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
@@ -408,6 +488,7 @@ public final class WorldGroupEditorScreen extends Screen {
     }
 
     private void toggleMode() {
+        if (blankMap) return;
         manualGroups = !manualGroups;
         syncWidgets();
     }
@@ -431,14 +512,61 @@ public final class WorldGroupEditorScreen extends Screen {
         });
     }
 
-    private void selectTile(MapTile tile, boolean additive) {
-        if (!additive) {
-            selectedTiles.clear();
+    private void beginDrag(int mapX, int mapZ, boolean additive) {
+        dragSelecting = true;
+        dragStartX = dragEndX = mapX;
+        dragStartZ = dragEndZ = mapZ;
+        dragBase.clear();
+        if (additive) dragBase.addAll(selectedTiles);
+        applyDrag(mapX, mapZ);
+    }
+
+    private void applyDrag(int mapX, int mapZ) {
+        dragEndX = mapX;
+        dragEndZ = mapZ;
+        selectedTiles.clear();
+        selectedTiles.addAll(dragBase);
+        int minX = Math.min(dragStartX, mapX);
+        int maxX = Math.max(dragStartX, mapX);
+        int minZ = Math.min(dragStartZ, mapZ);
+        int maxZ = Math.max(dragStartZ, mapZ);
+        for (int z = minZ; z <= maxZ; z++) {
+            for (int x = minX; x <= maxX; x++) {
+                if (!GroupEditorSync.inDragBox(x, z, dragStartX, dragStartZ, mapX, mapZ)) continue;
+                MapTile tile = tilesByCoordinate.get(key(x, z));
+                if (tile != null) selectedTiles.add(tile.id());
+            }
+        }
+    }
+
+    private void focusSelection() {
+        if (selectedTiles.size() != 1) return;
+        MapTile tile = tilesById.get(selectedTiles.iterator().next());
+        if (tile != null && shownOnMap(tile)) {
             activeGroupId = ownerOf(tile);
             syncWidgets();
         }
-        selectedTiles.add(tile.id());
     }
+
+    private void renderDragBox(GuiGraphics graphics, Layout layout, double cell) {
+        int minX = Math.min(dragStartX, dragEndX);
+        int maxX = Math.max(dragStartX, dragEndX);
+        int minZ = Math.min(dragStartZ, dragEndZ);
+        int maxZ = Math.max(dragStartZ, dragEndZ);
+        int x1 = round(layout.mapCenterX() + (minX - .5 - viewCenterX) * cell);
+        int y1 = round(layout.mapCenterY() + (minZ - .5 - viewCenterZ) * cell);
+        int x2 = round(layout.mapCenterX() + (maxX + .5 - viewCenterX) * cell);
+        int y2 = round(layout.mapCenterY() + (maxZ + .5 - viewCenterZ) * cell);
+        outline(graphics, new TileRect(x1, y1, Math.max(1, x2 - x1), Math.max(1, y2 - y1)), 1, HOVER);
+    }
+
+    private int[] mapCoordinate(double mouseX, double mouseY, Layout layout) {
+        double cell = cellSize(layout);
+        return new int[]{
+                (int) Math.floor(viewCenterX + (mouseX - layout.mapCenterX()) / cell + .5),
+                (int) Math.floor(viewCenterZ + (mouseY - layout.mapCenterY()) / cell + .5)};
+    }
+
 
     private void splitTile(MapTile tile) {
         selectedTiles.clear();
@@ -579,6 +707,8 @@ public final class WorldGroupEditorScreen extends Screen {
 
     private void refreshAtlas() {
         if (groupAtlas != null) groupAtlas.close();
+        groupAtlas = null;
+        if (!paintAutomaticBiomes()) return;
         Map<String, Boolean> configured = new LinkedHashMap<>();
         groups.forEach((id, group) -> configured.put(id, group.configured));
         groupAtlas = new GroupEditorAtlasTexture(snapshot, tileOwners, configured);
@@ -588,16 +718,47 @@ public final class WorldGroupEditorScreen extends Screen {
         List<ManualChunkGroupLayout.Group> draft = groups.values().stream()
                 .map(group -> new ManualChunkGroupLayout.Group(group.id, group.name, group.icon, group.site,
                         group.resources, group.configured, group.cannotLeave, List.copyOf(group.tileIds))).toList();
-        PacketDistributor.sendToServer(new SaveWorldGroupEditPayload(manualGroups, snapshot.groupRevision(), draft));
+        boolean persist = GroupEditorSync.persistDraft(blankMap, manualGroups);
+        PacketDistributor.sendToServer(new SaveWorldGroupEditPayload(persist, snapshot.groupRevision(), draft));
     }
 
     private Optional<DraftGroup> active() { return Optional.ofNullable(groups.get(activeGroupId)); }
 
     private List<DraftGroup> orderedGroups() {
         return groups.values().stream()
+                .filter(group -> GroupEditorSync.listed(blankMap, group.configured, group.id.equals(activeGroupId),
+                        group.tileIds.stream().anyMatch(selectedTiles::contains)))
                 .sorted(Comparator.comparing((DraftGroup group) -> group.name, String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(group -> group.id))
                 .toList();
+    }
+
+    private String modeLine() {
+        if (blankMap) return "与 M 地图一致：未打开地图显示的自动分组保持虚无，保存后客户端与服务端同步。";
+        if (snapshot.archipelago()) return "与 M 地图一致：只显示已探索岛屿，不绘制自动群系。";
+        return manualGroups ? "手动模式：未归组世界格会在保存时变为单格组。"
+                : "自动模式：保存时按群系斑块重新生成分组（详情不可编辑）。";
+    }
+
+    private boolean paintAutomaticBiomes() {
+        return GroupEditorSync.paintAutomaticBiomes(blankMap, snapshot.archipelago());
+    }
+
+    private boolean shownOnMap(MapTile tile) {
+        if (!blankMap) return true;
+        DraftGroup group = groups.get(ownerOf(tile));
+        return group != null && group.configured;
+    }
+
+    private static int islandColor(String sites) {
+        return switch (sites) {
+            case "主岛" -> 0xFFD9A6;
+            case "资源岛" -> 0x8FD48F;
+            case "秘境岛" -> 0xB58FE0;
+            case "死岛" -> 0xA8B0B4;
+            case "游岛" -> 0x6FD4E8;
+            default -> 0xE8D6A8;
+        };
     }
 
     private Layout layout() {
@@ -767,7 +928,9 @@ public final class WorldGroupEditorScreen extends Screen {
     private record Sidebar(int x, int width, int modeY, int listHeaderY, int listY, int listHeight,
                            int detailY, int actionY, int saveY) {}
 
-    private record VisibleRange(int minX, int minZ, int maxX, int maxZ) {}
+    private record VisibleRange(int minX, int minZ, int maxX, int maxZ) {
+        int tileCount() { return (maxX - minX + 1) * (maxZ - minZ + 1); }
+    }
 
     private record TileRect(int x, int y, int width, int height) {
         int right() { return x + width; }

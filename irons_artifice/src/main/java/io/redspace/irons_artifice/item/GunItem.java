@@ -30,19 +30,16 @@ import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.ItemContainerContents;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoAnimatable;
-import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.AnimationProcessor;
 import software.bernie.geckolib.animation.AnimationState;
 import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.constant.DataTickets;
 
 import java.util.List;
 import java.util.function.Function;
@@ -247,31 +244,42 @@ public class GunItem extends BaseGeoItem {
     @Override
     public void registerControllers(AnimatableManager.@NotNull ControllerRegistrar controllers) {
         super.registerControllers(controllers);
-        controllers.add(new AnimationController<>(this, IDLE_ANIMATION_CONTROLLER, this::gunIdleHandler));
-        controllers.add(new OffsetableAnimationController<>(this, GunAnimations.CONTROLLER_ACTIONS, test -> PlayState.STOP)
-                .receiveTriggeredAnimations()
+        controllers.add(new AnimationController<>(this, IDLE_ANIMATION_CONTROLLER, 0, this::gunIdleHandler));
+        controllers.add(new OffsetableAnimationController<>(this, GunAnimations.CONTROLLER_ACTIONS, 0, state -> PlayState.STOP)
                 .triggerableAnim(GunAnimations.FIRE, RawAnimation.begin().thenPlay(GunAnimations.FIRE))
                 .triggerableAnim(GunAnimations.RELOAD, RawAnimation.begin().thenPlay(GunAnimations.RELOAD))
                 .triggerableAnim(GunAnimations.EQUIP, RawAnimation.begin().thenPlay(GunAnimations.EQUIP))
         );
     }
 
-    private PlayState gunIdleHandler(AnimationState<GunItem> animationTest) {
-        animationTest.setAnimation(RawAnimation.begin().thenPlayAndHold(GunAnimations.IDLE));
-        return PlayState.CONTINUE;
+    private PlayState gunIdleHandler(AnimationState<GunItem> state) {
+        return state.setAndContinue(RawAnimation.begin().thenPlayAndHold(GunAnimations.IDLE));
+    }
+    /**
+     * Hand animations are keyed by the holder, never by GeckoLib's stack id. Those ids collide
+     * across players, and a shared id replays someone else's shot on this client's gun.
+     */
+    public static long clientAnimationId(int entityId, InteractionHand hand) {
+        long mixed = (entityId + 1L) * 0x9E3779B97F4A7C15L;
+        if (hand == InteractionHand.OFF_HAND) {
+            mixed ^= 0xC6A4A7935BD1E995L;
+        }
+        return mixed == 0L ? 1L : mixed;
     }
 
     public void playTriggeredClientAnimation(long instanceId, String animName, double speed, double offsetSeconds, double skipAtSeconds, double skipToSeconds) {
-        var manager = getAnimatableInstanceCache().getManagerForId(instanceId);
-        manager.setData(DataTickets.ITEM_RENDER_PERSPECTIVE, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND);
-        AnimationController<?> controller = manager.getAnimationControllers().get(TRIGGERED_ANIMATION_CONTROLLER);
+        AnimationController<?> controller = getAnimatableInstanceCache().getManagerForId(instanceId)
+                .getAnimationControllers().get(TRIGGERED_ANIMATION_CONTROLLER);
         if (!(controller instanceof OffsetableAnimationController<?> offsetable)) {
             return;
         }
-        manager.tryTriggerAnimation(TRIGGERED_ANIMATION_CONTROLLER, animName);
         offsetable.setAnimationSpeed(speed);
         offsetable.seekToSeconds(offsetSeconds);
         offsetable.setTimelineSkip(skipAtSeconds, skipToSeconds);
+        if (!offsetable.tryTriggerAnimation(animName)) {
+            return;
+        }
+        offsetable.forceAnimationReset();
     }
 
     public void cancelTriggeredClientAnimation(long instanceId) {
@@ -280,16 +288,18 @@ public class GunItem extends BaseGeoItem {
         AnimationController<?> controller = manager.getAnimationControllers().get(TRIGGERED_ANIMATION_CONTROLLER);
         if (controller instanceof OffsetableAnimationController<?> offsetable) {
             offsetable.seekToSeconds(0);
+            offsetable.setTimelineSkip(0, 0);
+            offsetable.stop();
             offsetable.forceAnimationReset();
         }
     }
 
-    public static double reloadAnimationSeconds(ItemStack stack) {
-        if (!(stack.getItem() instanceof GunItem gun)) {
+    public static double reloadAnimationSeconds(ItemStack stack, int entityId, @Nullable InteractionHand hand) {
+        if (!(stack.getItem() instanceof GunItem gun) || hand == null) {
             return 0;
         }
         AnimationController<?> controller = gun.getAnimatableInstanceCache()
-                .getManagerForId(GeoItem.getId(stack))
+                .getManagerForId(clientAnimationId(entityId, hand))
                 .getAnimationControllers()
                 .get(TRIGGERED_ANIMATION_CONTROLLER);
         if (controller instanceof OffsetableAnimationController<?> offsetable && offsetable.isPlayingNamed(GunAnimations.RELOAD)) {
@@ -310,8 +320,8 @@ public class GunItem extends BaseGeoItem {
         private double startOffsetSeconds;
         private double lastAdjustedTicks;
 
-        public OffsetableAnimationController(T animatable, String name, AnimationStateHandler<T> stateHandler) {
-            super(animatable, name, stateHandler);
+        public OffsetableAnimationController(T animatable, String name, int transitionTicks, AnimationStateHandler<T> stateHandler) {
+            super(animatable, name, transitionTicks, stateHandler);
         }
 
         public void setTimelineSkip(double skipAtSeconds, double skipToSeconds) {

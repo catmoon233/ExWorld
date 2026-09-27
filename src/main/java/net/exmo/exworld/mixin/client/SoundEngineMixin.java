@@ -4,14 +4,22 @@ import com.mojang.blaze3d.audio.ListenerTransform;
 import net.exmo.exworld.client.battle.BattleAudioPolicy;
 import net.minecraft.client.Camera;
 import net.minecraft.client.sounds.SoundEngine;
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Keeps battle audio centred on the controlled player while retaining camera orientation for stereo direction. */
 @Mixin(SoundEngine.class)
 public abstract class SoundEngineMixin {
+    // SoundInstance#getVolume may read the resolved Sound, which is still null at HEAD.
+    @Inject(method = "play(Lnet/minecraft/client/resources/sounds/SoundInstance;)V", at = @At("TAIL"))
+    private void exworld$recordMysterySound(SoundInstance sound, CallbackInfo callback) {
+        net.exmo.exworld.mystery.client.InWorldMemory.sound(sound);
+    }
     @ModifyArg(method = "updateSource", at = @At(value = "INVOKE",
             target = "Lcom/mojang/blaze3d/audio/ListenerTransform;<init>(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;)V"), index = 0)
     private Vec3 exworld$useBattlePlayerAsListener(Vec3 position) {

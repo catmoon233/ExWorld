@@ -1,0 +1,6 @@
+{
+  "type": "guimi_mod:characteristic_chest",
+  "conditions": [
+    { "condition": "minecraft:random_chance", "chance": 0.15 }
+  ]
+}

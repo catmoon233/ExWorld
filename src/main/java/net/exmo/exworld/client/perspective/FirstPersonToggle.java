@@ -26,6 +26,7 @@ public final class FirstPersonToggle {
     private static boolean firstPerson;
     private static boolean transitioning;
     private static int tick;
+    private static boolean phoneCameraHeld;
 
     private static float startYaw, startPitch, startDistance;
     private static float endYaw, endPitch, endDistance;
@@ -42,6 +43,8 @@ public final class FirstPersonToggle {
 
     public static boolean firstPerson() { return firstPerson; }
     public static boolean transitioning() { return transitioning; }
+    /** The phone camera owns the vanilla camera while open; suspend the first-person pin for the duration. */
+    public static void setPhoneCameraHeld(boolean held) { phoneCameraHeld = held; }
 
     public static void toggle() {
         Minecraft minecraft = Minecraft.getInstance();
@@ -165,7 +168,7 @@ public final class FirstPersonToggle {
 
         if (firstPerson && !transitioning) {
             // Keep the first-person profile pinned, including when a battle that overrode it ends.
-            if (!BattleClient.active()) minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+            if (!BattleClient.active() && !phoneCameraHeld) minecraft.options.setCameraType(CameraType.FIRST_PERSON);
             return;
         }
 

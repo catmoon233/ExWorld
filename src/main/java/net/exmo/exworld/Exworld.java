@@ -30,6 +30,8 @@ public final class Exworld {
 
     public Exworld(IEventBus modBus, ModContainer container) {
         ExWorldContent.register(modBus);
+        net.exmo.exworld.command.TokenArgument.register(modBus);
+        net.exmo.exworld.mystery.MysterySounds.register(modBus);
         IslandField.register(modBus);
         BattleAttributes.register(modBus);
         modBus.addListener(WorldNetwork::register);
@@ -42,12 +44,21 @@ public final class Exworld {
         InventorySystem.registerEvents();
         net.exmo.exworld.social.SocialSystem.register();
         net.exmo.exworld.npc.NpcSystem.register(modBus);
+        modBus.addListener(Exworld::phoneBridge);
+        net.exmo.exworld.mystery.MysteryGame.register();
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldMapClient.register(modBus);
+            net.exmo.exworld.client.memory.ReForgedMemoryClient.register(modBus);
             net.exmo.exworld.client.npc.NpcClient.register(modBus);
+            net.exmo.exworld.mystery.client.MysteryClient.register(modBus);
             net.exmo.exworld.client.webview.WebView2Client.register(modBus);
         }
         container.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         container.registerConfig(ModConfig.Type.SERVER, Config.SERVER_SPEC);
+    }
+    private static void phoneBridge(net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent event) {
+        if (net.neoforged.fml.ModList.get().isLoaded("exphone")) {
+            net.exmo.exworld.phone.ExworldPhoneBridge.connect();
+        }
     }
 }

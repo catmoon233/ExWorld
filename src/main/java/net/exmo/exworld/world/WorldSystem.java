@@ -16,6 +16,7 @@ import net.exmo.exworld.world.model.MapTile;
 import net.exmo.exworld.world.model.WorldBiome;
 import net.exmo.exworld.world.model.ChunkGroupShape;
 import net.exmo.exworld.world.model.ChunkGroupTransition;
+import net.exmo.exworld.world.model.GroupEditorSync;
 import net.exmo.exworld.world.model.WorldDimensions;
 import net.exmo.exworld.world.storage.NeoForgeWorldStateStore;
 import net.exmo.exworld.world.storage.WorldStateData;
@@ -23,6 +24,7 @@ import net.exmo.exworld.world.storage.WorldStateStore;
 import net.exmo.exworld.subtitle.SubtitlePayload;
 import net.minecraft.commands.Commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -257,7 +259,9 @@ public final class WorldSystem {
 
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) WorldNetwork.sendDecryptionMode(player, Config.decryptionMode);
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        WorldNetwork.sendDecryptionMode(player, Config.decryptionMode);
+        if (player.level().dimension() == Level.OVERWORLD) syncActiveChunkGroup(player);
     }
 
     @SubscribeEvent
@@ -387,7 +391,7 @@ public final class WorldSystem {
     public static void registerCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("exworld")
                 .then(Commands.literal("travel")
-                        .then(Commands.argument("tile", StringArgumentType.word())
+                        .then(Commands.argument("tile", TokenArgument.token())
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayerOrException();
                                     String id = StringArgumentType.getString(context, "tile");
@@ -472,8 +476,12 @@ public final class WorldSystem {
     }
 
     private static ChunkGroupShape chunkGroupShape(WorldStateData state, WorldTile tile) {
-        List<ChunkGroupShape.Cell> cells = state.region(tile.regionId()).stream()
-                .flatMap(region -> region.tileIds().stream())
+        var region = state.region(tile.regionId());
+        if (!GroupEditorSync.assignedGroup(Config.decryptionMode, region.map(net.exmo.exworld.world.model.Region::configured).orElse(false))) {
+            return new ChunkGroupShape(tile.regionId(), state.groupChunks(), List.of());
+        }
+        List<ChunkGroupShape.Cell> cells = region.stream()
+                .flatMap(value -> value.tileIds().stream())
                 .map(state::tile).flatMap(Optional::stream)
                 .map(member -> new ChunkGroupShape.Cell(member.mapX(), member.mapZ())).toList();
         return new ChunkGroupShape(tile.regionId(), state.groupChunks(), cells.isEmpty()

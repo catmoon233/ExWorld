@@ -1,0 +1,13 @@
+{
+  "id": "exworld:passerby_suspicion",
+  "version": 1,
+  "nodes": [
+    {"id":"brush_off","type":"trigger","params":{"kind":"on_npc_choice","value":"passerby:brush_off"},"x":20,"y":40},
+    {"id":"future_only","type":"condition","params":{"kind":"era","value":"FUTURE"},"x":190,"y":40},
+    {"id":"raise_suspicion","type":"action","params":{"kind":"add_suspicion","amount":1},"x":360,"y":40}
+  ],
+  "edges": [
+    {"from":"brush_off","port":"next","to":"future_only"},
+    {"from":"future_only","port":"true","to":"raise_suspicion"}
+  ]
+}

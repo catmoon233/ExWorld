@@ -12,6 +12,7 @@ public final class ClientChunkGroupState {
     private ClientChunkGroupState() {}
 
     public static void install(ChunkGroupShape shape, boolean archipelagoMode) {
+        if (archipelago == archipelagoMode && active != null && shape != null && active.isEmpty() && shape.isEmpty()) return;
         active = shape;
         archipelago = archipelagoMode;
         revision++;

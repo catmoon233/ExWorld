@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "exphone:item/phone_body",
+    "layer1": "exphone:item/phone_detail"
+  }
+}

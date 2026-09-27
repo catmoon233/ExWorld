@@ -1,0 +1,53 @@
+{
+  "parent": "minecraft:builtin/entity",
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [9, -97, -13],
+      "translation": [-0.5, -7, -1],
+      "scale": [0.57, 0.83, 0.5]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [9, -97, -13],
+      "translation": [-0.25, -1, 0],
+      "scale": [0.59, 0.83, 0.5]
+    },
+    "firstperson_righthand": {
+      "rotation": [-20, -97, -13],
+      "translation": [-1, -1.75, -0.25],
+      "scale": [0.57, 0.83, 0.5]
+    },
+    "firstperson_lefthand": {
+      "rotation": [-20, -97, -13],
+      "translation": [-1, -1.75, -0.25],
+      "scale": [0.57, 0.83, 0.5]
+    },
+    "ground": {
+      "rotation": [0, -91, 0],
+      "translation": [-0.75, 0, 0],
+      "scale": [0.56, 0.74, 0.29]
+    },
+    "gui": {
+      "translation": [0, -4.25, 0],
+      "scale": [0.53, 0.52, 0.77]
+    },
+    "fixed": {
+      "rotation": [0, -91, 0],
+      "translation": [-0.75, 0, 0],
+      "scale": [0.56, 0.74, 0.29]
+    },
+    "on_shelf": {
+      "rotation": [0, -91, 0],
+      "translation": [-0.75, 0, 0],
+      "scale": [0.56, 0.74, 0.29]
+    }
+  },
+  "groups": [
+    {
+      "name": "bone",
+      "origin": [6, 3, 7],
+      "scope": 0,
+      "color": 0,
+      "children": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    }
+  ]
+}

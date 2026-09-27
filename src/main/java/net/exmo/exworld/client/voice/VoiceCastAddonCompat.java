@@ -1,6 +1,7 @@
 package net.exmo.exworld.client.voice;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.exmo.exworld.client.battle.BattleClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -56,10 +57,10 @@ public final class VoiceCastAddonCompat {
     private static void registerClientCommands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(net.minecraft.commands.Commands.literal("exworldvoice")
                 .then(net.minecraft.commands.Commands.literal("record")
-                        .then(net.minecraft.commands.Commands.argument("id", StringArgumentType.string())
+                        .then(net.minecraft.commands.Commands.argument("id", TokenArgument.token())
                                 .executes(context -> beginRecording(StringArgumentType.getString(context, "id")))))
                 .then(net.minecraft.commands.Commands.literal("delete")
-                        .then(net.minecraft.commands.Commands.argument("id", StringArgumentType.string())
+                        .then(net.minecraft.commands.Commands.argument("id", TokenArgument.token())
                                 .executes(context -> deleteTemplate(StringArgumentType.getString(context, "id")))))
                 .then(net.minecraft.commands.Commands.literal("list")
                         .executes(context -> listTemplates())));

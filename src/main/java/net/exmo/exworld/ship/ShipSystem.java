@@ -1,6 +1,7 @@
 package net.exmo.exworld.ship;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.exmo.exworld.command.TokenArgument;
 import net.exmo.exworld.content.ExWorldContent;
 import net.exmo.exworld.network.ShipNetwork;
 import net.exmo.exworld.ship.assembly.ShipCapture;
@@ -69,11 +70,11 @@ public final class ShipSystem {
                 .then(Commands.literal("edit").executes(context -> {
                     openEditor(context.getSource().getPlayerOrException(), "");
                     return 1;
-                }).then(Commands.argument("id", StringArgumentType.word()).executes(context -> {
+                }).then(Commands.argument("id", TokenArgument.token()).executes(context -> {
                     openEditor(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "id"));
                     return 1;
                 })))
-                .then(Commands.literal("spawn").then(Commands.argument("id", StringArgumentType.word()).executes(context -> {
+                .then(Commands.literal("spawn").then(Commands.argument("id", TokenArgument.token()).executes(context -> {
                     spawn(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "id"));
                     return 1;
                 })))

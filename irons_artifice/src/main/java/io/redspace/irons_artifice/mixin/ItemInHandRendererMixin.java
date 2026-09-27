@@ -42,17 +42,22 @@ public class ItemInHandRendererMixin {
             method = "renderArmWithItem",
             at = @At("HEAD"),
             argsOnly = true,
-            name = "inverseArmHeight")
+            index = 7
+    )
     private float irons_artifice$zeroGunEquipOffset(
-            float inverseArmHeight,
+            float equipProgress,
             AbstractClientPlayer player,
             float frameInterp,
             float xRot,
             InteractionHand hand,
             float attack,
-            ItemStack itemStack
+            ItemStack itemStack,
+            float originalEquipProgress,
+            PoseStack poseStack,
+            MultiBufferSource buffer,
+            int light
     ) {
-        return itemStack.getItem() instanceof GunItem ? 0.0F : inverseArmHeight;
+        return itemStack.getItem() instanceof GunItem ? 0.0F : equipProgress;
     }
 
     @WrapOperation(

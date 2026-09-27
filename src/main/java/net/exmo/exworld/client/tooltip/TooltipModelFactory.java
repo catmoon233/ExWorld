@@ -41,7 +41,9 @@ public final class TooltipModelFactory {
         ItemStack item = stack == null ? ItemStack.EMPTY : stack;
         Function<String, String> translate = TooltipModelFactory::translate;
         List<NameTag> tags = new ArrayList<>();
-        tags.add(defaultTag(item));
+        List<NameTag> guimi = GuimiItemTags.tags(item, translate);
+        if (guimi.isEmpty()) tags.add(defaultTag(item));
+        else tags.addAll(guimi);
         tags.addAll(ExModifierTooltip.elementTags(ExModifierApi.elementsOn(item), translate));
 
         ExModifierCatalog catalog = ExModifierCatalog.current();

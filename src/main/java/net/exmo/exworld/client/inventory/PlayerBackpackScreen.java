@@ -4,32 +4,48 @@ import net.exmo.exmodifier.api.ExModifierApi;
 import net.exmo.exworld.client.tooltip.QualityChrome;
 import net.exmo.exworld.client.tooltip.RarityPalette;
 import net.exmo.exworld.inventory.BackpackUi;
+import net.exmo.exworld.inventory.CuriosPresence;
 import net.exmo.exworld.inventory.InventoryLayout;
 import net.exmo.exworld.inventory.ItemFootprint;
 import net.exmo.exworld.inventory.ItemStackOps;
+import net.exmo.exworld.inventory.PlayerBackpackData;
 import net.exmo.exworld.inventory.PlayerBackpackMenu;
 import net.exmo.exworld.inventory.StorageCore;
 import net.exmo.exworld.network.InventoryPayloads;
-import net.exmo.exworld.client.inventory.BackpackTabs;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaternionf;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBackpackMenu> {
     private static final int ICON = 16;
 
     private float xMouse;
     private float yMouse;
+    private int accessoryScroll;
+    private int accessoryMax;
+    private int viewX;
+    private int viewY;
+    private int viewW;
+    private int viewH;
+    private boolean draggingBar;
+    /** Left click already sent a slot action; vanilla would click again on release. */
+    private boolean swallowRelease;
+    private final List<CurioHit> curioHits = new ArrayList<>();
+    private final List<LegacyHit> legacyHits = new ArrayList<>();
 
     public PlayerBackpackScreen(PlayerBackpackMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -50,16 +66,15 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         this.xMouse = mouseX;
         this.yMouse = mouseY;
+        prepareAccessoryLayout();
         super.render(graphics, mouseX, mouseY, partialTick);
         drawControlLayer(graphics, mouseX, mouseY);
-        renderPlacementPreview(graphics, mouseX, mouseY);
-        renderCarriedLarge(graphics, mouseX, mouseY);
+        renderHoverTooltip(graphics, mouseX, mouseY);
     }
-
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, InventoryLayout.PANEL);
+        graphics.fill(0, 0, width, height, 0xC008080C);
         renderBg(graphics, partialTick, mouseX, mouseY);
     }
 
@@ -67,36 +82,26 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;
-        long now = System.currentTimeMillis();
-        float fade = Mth.clamp((now - BackpackUi.openTime) / 180.0F, 0.0F, 1.0F);
-        int fadeA = Math.round(fade * 255);
+        float fade = InventoryChrome.fade(BackpackUi.openTime);
+        InventoryChrome.panel(graphics, x, y + InventoryLayout.TAB_H, imageWidth, imageHeight - InventoryLayout.TAB_H, fade);
 
-        fillAlpha(graphics, x, y + InventoryLayout.TAB_H, x + imageWidth, y + imageHeight, InventoryLayout.SURFACE, fadeA);
-        fillAlpha(graphics, x, y + InventoryLayout.TAB_H, x + imageWidth, y + InventoryLayout.TAB_H + 1, InventoryLayout.LINE, fadeA);
-        fillAlpha(graphics, x, y + imageHeight - 1, x + imageWidth, y + imageHeight, InventoryLayout.LINE, fadeA);
-        fillAlpha(graphics, x, y + InventoryLayout.TAB_H, x + 1, y + imageHeight, InventoryLayout.LINE, fadeA);
-        fillAlpha(graphics, x + imageWidth - 1, y + InventoryLayout.TAB_H, x + imageWidth, y + imageHeight, InventoryLayout.LINE, fadeA);
-        int split = x + InventoryLayout.GRID_X - InventoryLayout.PAD / 2;
-        fillAlpha(graphics, split, y + InventoryLayout.TAB_H + 8, split + 1, y + imageHeight - 8, InventoryLayout.LINE_INNER, fadeA);
-
-        drawTab(graphics, x, y, Component.translatable("screen.exworld.backpack_tab"), true);
-        drawTab(graphics, x + 64, y, Component.translatable("screen.exworld.character_tab"), false);
-        drawTab(graphics, x + 128, y, Component.translatable("screen.exworld.quests_tab"), false);
-        if (BackpackTabs.hasSequence()) {
-            boolean sequenceHover = mouseX >= x + 192 && mouseX < x + 252 && mouseY >= y && mouseY < y + InventoryLayout.TAB_H;
-            drawTab(graphics, x + 192, y, Component.translatable("screen.exworld.sequence_tab"), false, sequenceHover);
+        drawTab(graphics, x, y, Component.translatable("screen.exworld.backpack_tab"), true, false);
+        int sequenceX = BackpackTabs.sequenceTabX(x);
+        if (sequenceX >= 0) {
+            boolean sequenceHover = hoverRect(mouseX, mouseY, sequenceX, y, BackpackTabs.TAB_W, InventoryLayout.TAB_H);
+            drawTab(graphics, sequenceX, y, Component.translatable("screen.exworld.sequence_tab"), false, sequenceHover);
         }
+        int characterX = BackpackTabs.characterTabX(x);
+        boolean characterHover = hoverRect(mouseX, mouseY, characterX, y, BackpackTabs.TAB_W, InventoryLayout.TAB_H);
+        drawTab(graphics, characterX, y, Component.translatable("screen.exworld.character_tab"), false, characterHover);
 
         boolean accessories = BackpackUi.accessories;
         int hovered = hoveredGridCell(mouseX, mouseY);
         int unlocked = menu.backpack().unlocked();
 
         if (!accessories) {
-
-            fillAlpha(graphics,
-                    x + InventoryLayout.DOLL_X1, y + InventoryLayout.DOLL_Y1,
-                    x + InventoryLayout.DOLL_X2, y + InventoryLayout.DOLL_Y2,
-                    InventoryLayout.SURFACE_INNER, fadeA);
+            graphics.fill(x + InventoryLayout.DOLL_X1, y + InventoryLayout.DOLL_Y1,
+                    x + InventoryLayout.DOLL_X2, y + InventoryLayout.DOLL_Y2, InventoryLayout.SURFACE_INNER);
             if (minecraft != null && minecraft.player != null) {
                 InventoryScreen.renderEntityInInventoryFollowsMouse(
                         graphics,
@@ -134,15 +139,17 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
             drawFramed(graphics, x + InventoryLayout.CORE_X, y + InventoryLayout.CORE_Y,
                     InventoryLayout.ITEM, InventoryLayout.ITEM, menu.backpack().data().core(),
                     hoverRect(mouseX, mouseY, x + InventoryLayout.CORE_X, y + InventoryLayout.CORE_Y, InventoryLayout.ITEM, InventoryLayout.ITEM));
-        } else {
+        } else if (!CuriosPresence.loaded()) {
             drawPlate(graphics, x + InventoryLayout.ACCESSORY_X, y + InventoryLayout.ACCESSORY_Y, 3, 2);
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
                 int ax = x + InventoryLayout.ACCESSORY_X + (i % 3) * InventoryLayout.CELL;
                 int ay = y + InventoryLayout.ACCESSORY_Y + (i / 3) * InventoryLayout.CELL;
                 drawFill(graphics, ax, ay, InventoryLayout.ITEM, InventoryLayout.ITEM,
                         menu.backpack().data().accessory(i), false,
                         hoverRect(mouseX, mouseY, ax, ay, InventoryLayout.ITEM, InventoryLayout.ITEM));
             }
+        } else {
+            drawCurios(graphics, mouseX, mouseY);
         }
 
         drawUnlockedPlate(graphics, x + InventoryLayout.GRID_X, y + InventoryLayout.GRID_Y, unlocked);
@@ -169,7 +176,141 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         renderPlacementGhost(graphics, mouseX, mouseY);
     }
 
-    /** Gray outer frame, 1px inner hairline left as the plate color between cells. */
+    private void drawCurios(GuiGraphics graphics, int mouseX, int mouseY) {
+        graphics.fill(viewX, viewY, viewX + viewW, viewY + viewH, InventoryLayout.SURFACE_INNER);
+        graphics.enableScissor(viewX, viewY, viewX + viewW - 4, viewY + viewH);
+        int y = viewY - accessoryScroll;
+        if (minecraft != null && minecraft.player != null) {
+            List<CuriosPresence.GroupView> groups = CuriosPresence.groups(minecraft.player);
+            if (groups.isEmpty() && !hasLegacyAccessories()) {
+                graphics.drawString(font, Component.translatable("screen.exworld.curios_empty"), viewX + 6, viewY + 6, InventoryLayout.MUTED, false);
+            }
+            int columns = Math.max(1, (viewW - 8) / InventoryLayout.CELL);
+            for (CuriosPresence.GroupView group : groups) {
+                graphics.drawString(font, fit(slotLabel(group.identifier()), viewW - 12), viewX + 4, y + 2, InventoryLayout.MUTED, false);
+                y += 12;
+                for (int i = 0; i < group.slots().size(); i++) {
+                    CuriosPresence.SlotView slot = group.slots().get(i);
+                    int sx = viewX + 4 + (i % columns) * InventoryLayout.CELL;
+                    int sy = y + (i / columns) * InventoryLayout.CELL;
+                    boolean hover = hoverRect(mouseX, mouseY, sx, sy, InventoryLayout.ITEM, InventoryLayout.ITEM)
+                            && mouseY >= viewY && mouseY < viewY + viewH;
+                    drawFill(graphics, sx, sy, InventoryLayout.ITEM, InventoryLayout.ITEM, slot.stack(), false, hover);
+                    drawAccessoryItem(graphics, slot.stack(), sx, sy);
+                    if (slot.stack().isEmpty()) drawCurioIcon(graphics, slot.icon(), sx + 2, sy + 2);
+                }
+                int rows = (group.slots().size() + columns - 1) / columns;
+                y += rows * InventoryLayout.CELL + 4;
+            }
+            if (hasLegacyAccessories()) {
+                graphics.drawString(font, Component.translatable("screen.exworld.legacy_accessories"), viewX + 4, y + 2, InventoryLayout.MUTED, false);
+                y += 12;
+                for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
+                    int sx = viewX + 4 + (i % 3) * InventoryLayout.CELL;
+                    int sy = y + (i / 3) * InventoryLayout.CELL;
+                    drawFill(graphics, sx, sy, InventoryLayout.ITEM, InventoryLayout.ITEM,
+                            menu.backpack().data().accessory(i), false,
+                            hoverRect(mouseX, mouseY, sx, sy, InventoryLayout.ITEM, InventoryLayout.ITEM));
+                    drawAccessoryItem(graphics, menu.backpack().data().accessory(i), sx, sy);
+                }
+            }
+        }
+        graphics.disableScissor();
+        InventoryChrome.scrollbar(graphics, viewX + viewW - 3, viewY, viewH, accessoryMax, accessoryScroll);
+    }
+
+    private void prepareAccessoryLayout() {
+        curioHits.clear();
+        viewX = leftPos + InventoryLayout.PAD;
+        viewY = topPos + InventoryLayout.TAB_H + 28;
+        viewW = InventoryLayout.LEFT_WIDTH - 8;
+        viewH = Math.max(20, topPos + imageHeight - 8 - viewY);
+        legacyHits.clear();
+        if (!BackpackUi.accessories || !CuriosPresence.loaded() || minecraft == null || minecraft.player == null) {
+            accessoryMax = 0;
+            return;
+        }
+        int columns = Math.max(1, (viewW - 8) / InventoryLayout.CELL);
+        int content = 0;
+        List<CuriosPresence.GroupView> groups = CuriosPresence.groups(minecraft.player);
+        for (CuriosPresence.GroupView group : groups) {
+            content += 12;
+            int rows = (group.slots().size() + columns - 1) / columns;
+            content += rows * InventoryLayout.CELL + 4;
+        }
+        if (hasLegacyAccessories()) content += 12 + 2 * InventoryLayout.CELL;
+        accessoryMax = Math.max(0, content - viewH);
+        accessoryScroll = Mth.clamp(accessoryScroll, 0, accessoryMax);
+
+        int y = viewY - accessoryScroll;
+        for (CuriosPresence.GroupView group : groups) {
+            y += 12;
+            for (int i = 0; i < group.slots().size(); i++) {
+                CuriosPresence.SlotView slot = group.slots().get(i);
+                int sx = viewX + 4 + (i % columns) * InventoryLayout.CELL;
+                int sy = y + (i / columns) * InventoryLayout.CELL;
+                if (sy + InventoryLayout.ITEM > viewY && sy < viewY + viewH) {
+                    curioHits.add(new CurioHit(slot.identifier(), slot.index(), sx, sy));
+                }
+            }
+            int rows = (group.slots().size() + columns - 1) / columns;
+            y += rows * InventoryLayout.CELL + 4;
+        }
+        if (hasLegacyAccessories()) {
+            y += 12;
+            for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
+                int sx = viewX + 4 + (i % 3) * InventoryLayout.CELL;
+                int sy = y + (i / 3) * InventoryLayout.CELL;
+                if (sy + InventoryLayout.ITEM > viewY && sy < viewY + viewH) {
+                    legacyHits.add(new LegacyHit(i, sx, sy));
+                }
+            }
+        }
+    }
+
+    private boolean hasLegacyAccessories() {
+        for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
+            if (!menu.backpack().data().accessory(i).isEmpty()) return true;
+        }
+        return false;
+    }
+
+    private Component slotLabel(String identifier) {
+        String key = "curios.identifier." + identifier;
+        Component translated = Component.translatable(key);
+        return translated.getString().equals(key) ? Component.literal(identifier) : translated;
+    }
+
+    private String fit(Component component, int max) {
+        String text = component.getString();
+        if (font.width(text) <= max) return text;
+        String ellipsis = "…";
+        int limit = Math.max(0, max - font.width(ellipsis));
+        int end = text.length();
+        while (end > 0 && font.width(text.substring(0, end)) > limit) end--;
+        return text.substring(0, end) + ellipsis;
+    }
+
+    private void drawCurioIcon(GuiGraphics graphics, ResourceLocation icon, int x, int y) {
+        if (minecraft == null || icon == null) return;
+        TextureAtlasSprite sprite = minecraft.getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(icon);
+        graphics.blit(x, y, 0, 16, 16, sprite);
+    }
+
+    /**
+     * Curios slots are projected into this screen instead of being menu slots, so vanilla never
+     * reaches {@link #renderSlot(GuiGraphics, Slot)} for them. Render their stack immediately
+     * after the custom slot fill; otherwise the fill is the only visible layer.
+     */
+    private void drawAccessoryItem(GuiGraphics graphics, ItemStack stack, int x, int y) {
+        if (stack.isEmpty()) return;
+        int pad = (InventoryLayout.ITEM - ICON) / 2;
+        int itemX = x + pad;
+        int itemY = y + pad;
+        graphics.renderItem(stack, itemX, itemY);
+        graphics.renderItemDecorations(font, stack, itemX, itemY);
+    }
+
     private static void drawPlate(GuiGraphics graphics, int x, int y, int columns, int rows) {
         int w = columns * InventoryLayout.CELL - InventoryLayout.GAP;
         int h = rows * InventoryLayout.CELL - InventoryLayout.GAP;
@@ -177,7 +318,6 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         graphics.fill(x, y, x + w, y + h, InventoryLayout.LINE_INNER);
     }
 
-    /** Only the unlocked rectangle. Locked extension cells are not drawn. */
     private static void drawUnlockedPlate(GuiGraphics graphics, int x, int y, int unlocked) {
         int shown = Math.max(0, Math.min(StorageCore.GRID_CELLS, unlocked));
         if (shown <= 0) return;
@@ -187,29 +327,24 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         if (extra > 0) drawPlate(graphics, x, y + fullRows * InventoryLayout.CELL, extra, 1);
     }
 
-    /** Accessory and edit controls sit above the doll, not under it. */
     private void drawControlLayer(GuiGraphics graphics, int mouseX, int mouseY) {
         var pose = graphics.pose();
         pose.pushPose();
         pose.translate(0, 0, 500);
         int bx = leftPos + InventoryLayout.ACCESSORY_BTN_X;
         int by = topPos + InventoryLayout.ACCESSORY_BTN_Y;
-        int bw = InventoryLayout.ACCESSORY_BTN_W;
-        int bh = InventoryLayout.ACCESSORY_BTN_H;
-        boolean edit = minecraft != null && minecraft.player != null && minecraft.player.hasPermissions(2);
-        int clusterH = edit ? InventoryLayout.EDIT_BTN_Y - InventoryLayout.ACCESSORY_BTN_Y + bh : bh;
-        graphics.fill(bx - 2, by - 2, bx + bw + 2, by + clusterH + 2, InventoryLayout.LINE);
-        graphics.fill(bx - 1, by - 1, bx + bw + 1, by + clusterH + 1, InventoryLayout.SURFACE);
-        drawButton(graphics, bx, by, bw, bh,
-                Component.translatable(BackpackUi.accessories ? "screen.exworld.backpack_equipment" : "screen.exworld.backpack_accessories"),
-                mouseX, mouseY);
-        if (edit) {
-            drawButton(graphics, leftPos + InventoryLayout.EDIT_BTN_X, topPos + InventoryLayout.EDIT_BTN_Y, bw, bh,
-                    Component.translatable("screen.exworld.footprint_edit"), mouseX, mouseY);
-        }
+        int size = InventoryLayout.ACCESSORY_BTN;
+        boolean hover = hoverRect(mouseX, mouseY, bx, by, size, size);
+        graphics.fill(bx - 1, by - 1, bx + size + 1, by + size + 1, hover ? InventoryLayout.ACCENT : InventoryLayout.LINE);
+        graphics.fill(bx, by, bx + size, by + size, hover ? InventoryLayout.BUTTON_HOVER : InventoryLayout.BUTTON);
+        int mark = hover ? InventoryLayout.TEXT : InventoryLayout.MUTED;
+        graphics.fill(bx + 5, by + 5, bx + size - 5, by + 6, mark);
+        graphics.fill(bx + 5, by + size - 6, bx + size - 5, by + size - 5, mark);
+        graphics.fill(bx + 5, by + 5, bx + 6, by + size - 5, mark);
+        graphics.fill(bx + size - 6, by + 5, bx + size - 5, by + size - 5, mark);
+        graphics.fill(bx + 8, by + 8, bx + size - 8, by + size - 8, mark);
         pose.popPose();
     }
-
 
     private void renderPlacementGhost(GuiGraphics graphics, int mouseX, int mouseY) {
         ItemStack carried = menu.getCarried();
@@ -223,38 +358,7 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         int h = (origin >= 0 ? footprint.height() : 1) * InventoryLayout.CELL - InventoryLayout.GAP;
         int gx = leftPos + gridX(cell);
         int gy = topPos + gridY(cell);
-        graphics.fill(gx, gy, gx + w, gy + h, origin >= 0 ? 0x66E4EDF6 : 0x66C45C5C);
-    }
-
-    private void renderPlacementPreview(GuiGraphics graphics, int mouseX, int mouseY) {
-        ItemStack carried = menu.getCarried();
-        if (carried.isEmpty()) return;
-        int hovered = hoveredGridCell(mouseX, mouseY);
-        if (hovered < 0 || menu.backpack().ownerOf(hovered) >= 0) return;
-        int origin = menu.backpack().resolvePlacement(hovered, carried);
-        if (origin < 0) return;
-        ItemFootprint footprint = ItemStackOps.INSTANCE.footprint(carried);
-        renderScaledItem(graphics, carried,
-                leftPos + gridX(origin),
-                topPos + gridY(origin),
-                footprint.width() * InventoryLayout.CELL - InventoryLayout.GAP,
-                footprint.height() * InventoryLayout.CELL - InventoryLayout.GAP,
-                footprint.width(),
-                footprint.height());
-    }
-
-    private void renderCarriedLarge(GuiGraphics graphics, int mouseX, int mouseY) {
-        ItemStack carried = menu.getCarried();
-        if (carried.isEmpty()) return;
-        ItemFootprint footprint = ItemStackOps.INSTANCE.footprint(carried);
-        if (footprint.unit()) return;
-        int iconW = ICON * footprint.width();
-        int iconH = ICON * footprint.height();
-        var pose = graphics.pose();
-        pose.pushPose();
-        pose.translate(0, 0, 400);
-        renderScaledItem(graphics, carried, mouseX - iconW / 2, mouseY - iconH / 2, iconW, iconH, footprint.width(), footprint.height());
-        pose.popPose();
+        graphics.fill(gx, gy, gx + w, gy + h, origin >= 0 ? 0x55E4EDF6 : 0x66C45C5C);
     }
 
     private int hoveredGridCell(int mouseX, int mouseY) {
@@ -267,7 +371,6 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         if (gx >= InventoryLayout.GRID_WIDTH || gy >= InventoryLayout.GRID_HEIGHT) return -1;
         int cell = row * InventoryLayout.COLUMNS + col;
         return cell < menu.backpack().unlocked() ? cell : -1;
-
     }
 
     private static boolean hoverRect(int mx, int my, int x, int y, int w, int h) {
@@ -291,44 +394,104 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         return InventoryLayout.GRID_Y + (cell / InventoryLayout.COLUMNS) * InventoryLayout.CELL;
     }
 
-    protected boolean isHovering(Slot slot, double mouseX, double mouseY) {
-        int w = hitWidth(slot);
-        int h = hitHeight(slot);
-        return mouseX >= leftPos + slot.x && mouseX < leftPos + slot.x + w
-                && mouseY >= topPos + slot.y && mouseY < topPos + slot.y + h;
+    private boolean pickup(int slot, int button) {
+        if (minecraft == null || minecraft.gameMode == null || minecraft.player == null || slot < 0) return false;
+        net.minecraft.world.inventory.ClickType type = hasShiftDown()
+                ? net.minecraft.world.inventory.ClickType.QUICK_MOVE
+                : net.minecraft.world.inventory.ClickType.PICKUP;
+        minecraft.gameMode.handleInventoryMouseClick(menu.containerId, slot, button, type, minecraft.player);
+        return true;
     }
 
-    private static int hitWidth(Slot slot) {
-        if (slot.index >= PlayerBackpackMenu.WEAPON_START && slot.index < PlayerBackpackMenu.CORE_SLOT) {
-            return InventoryLayout.WEAPON_WIDTH;
-        }
-        if (slot.index < PlayerBackpackMenu.HOTBAR_START + 9 || slot.index >= PlayerBackpackMenu.ACCESSORY_START) {
-            return InventoryLayout.CELL;
-        }
-        return InventoryLayout.ITEM;
-    }
-
-
-    private static int hitHeight(Slot slot) {
-        if (slot.index < PlayerBackpackMenu.ARMOR_START + 4 || slot.index >= PlayerBackpackMenu.ACCESSORY_START) {
-            return InventoryLayout.CELL;
-        }
-        return InventoryLayout.ITEM;
-    }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (!menu.getCarried().isEmpty() || hoveredSlot == null) return;
-        ItemStack stack = tooltipStack(hoveredSlot);
-        if (!stack.isEmpty()) graphics.renderTooltip(font, stack, mouseX, mouseY);
     }
 
-    private ItemStack tooltipStack(Slot slot) {
-        if (slot.index < PlayerBackpackMenu.GRID_SLOTS) {
-            int owner = menu.backpack().ownerOf(slot.index);
+    private void renderHoverTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (!menu.getCarried().isEmpty()) return;
+        if (hoveringAccessoryButton(mouseX, mouseY)) {
+            graphics.renderTooltip(font, Component.translatable(BackpackUi.accessories
+                    ? "screen.exworld.backpack_equipment" : "screen.exworld.backpack_accessories"), mouseX, mouseY);
+            return;
+        }
+        ItemStack stack = stackAt(mouseX, mouseY);
+        if (stack.isEmpty()) return;
+        var pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(0, 0, 800);
+        graphics.renderTooltip(font, stack, mouseX, mouseY);
+        pose.popPose();
+    }
+
+    private ItemStack stackAt(int mouseX, int mouseY) {
+        int cell = hoveredGridCell(mouseX, mouseY);
+        if (cell >= 0) {
+            int owner = menu.backpack().ownerOf(cell);
             return owner >= 0 ? menu.backpack().grid(owner) : ItemStack.EMPTY;
         }
-        return slot.getItem();
+        for (int i = 0; i < 9; i++) {
+            int hx = leftPos + InventoryLayout.GRID_X + i * InventoryLayout.CELL;
+            if (hoverRect(mouseX, mouseY, hx, topPos + InventoryLayout.HOTBAR_Y, InventoryLayout.CELL, InventoryLayout.CELL)) {
+                return menu.slots.get(PlayerBackpackMenu.HOTBAR_START + i).getItem();
+            }
+        }
+        if (!BackpackUi.accessories) {
+            if (!net.exmo.exworld.Config.decryptionMode) {
+                if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.WEAPON1_X, topPos + InventoryLayout.WEAPON1_Y, InventoryLayout.WEAPON_WIDTH, InventoryLayout.ITEM)) {
+                    return menu.backpack().weapon(0);
+                }
+                if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.WEAPON2_X, topPos + InventoryLayout.WEAPON2_Y, InventoryLayout.WEAPON_WIDTH, InventoryLayout.ITEM)) {
+                    return menu.backpack().weapon(1);
+                }
+            }
+            ItemStack armor = armorAt(mouseX, mouseY);
+            if (!armor.isEmpty()) return armor;
+            if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.CORE_X, topPos + InventoryLayout.CORE_Y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return menu.backpack().data().core();
+            }
+            return ItemStack.EMPTY;
+        }
+        for (CurioHit hit : curioHits) {
+            if (hoverRect(mouseX, mouseY, hit.x, hit.y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return curioStack(hit.identifier, hit.index);
+            }
+        }
+        for (LegacyHit hit : legacyHits) {
+            if (hoverRect(mouseX, mouseY, hit.x, hit.y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return menu.backpack().data().accessory(hit.index);
+            }
+        }
+        for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
+            int ax = leftPos + InventoryLayout.ACCESSORY_X + (i % 3) * InventoryLayout.CELL;
+            int ay = topPos + InventoryLayout.ACCESSORY_Y + (i / 3) * InventoryLayout.CELL;
+            if (hoverRect(mouseX, mouseY, ax, ay, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return menu.backpack().data().accessory(i);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private ItemStack armorAt(int mouseX, int mouseY) {
+        int[] xs = {InventoryLayout.HELMET_X, InventoryLayout.CHEST_X, InventoryLayout.LEGS_X, InventoryLayout.BOOTS_X};
+        int[] ys = {InventoryLayout.HELMET_Y, InventoryLayout.CHEST_Y, InventoryLayout.LEGS_Y, InventoryLayout.BOOTS_Y};
+        for (int i = 0; i < 4; i++) {
+            if (hoverRect(mouseX, mouseY, leftPos + xs[i], topPos + ys[i], InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return menu.slots.get(PlayerBackpackMenu.ARMOR_START + i).getItem();
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private ItemStack curioStack(String identifier, int index) {
+        if (minecraft == null || minecraft.player == null) return ItemStack.EMPTY;
+        for (CuriosPresence.GroupView group : CuriosPresence.groups(minecraft.player)) {
+            if (!group.identifier().equals(identifier)) continue;
+            for (CuriosPresence.SlotView slot : group.slots()) {
+                if (slot.index() == index) return slot.stack();
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     @Override
@@ -351,7 +514,6 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
 
     @Override
     protected void renderSlotHighlight(GuiGraphics graphics, Slot slot, int mouseX, int mouseY, float partialTick) {
-        // Hover is painted with the cell fill so the highlight matches the full cell, not a 16px corner.
     }
 
     private void renderGridItem(GuiGraphics graphics, Slot slot) {
@@ -367,7 +529,6 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
                 footprint.height());
     }
 
-    /** Integer footprint scale: 2x1, 2x2, 1x2, centered in the cell box. */
     private void renderScaledItem(GuiGraphics graphics, ItemStack stack, int x, int y, int boxW, int boxH, int scaleX, int scaleY) {
         int iconW = ICON * scaleX;
         int iconH = ICON * scaleY;
@@ -435,67 +596,130 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
         }
     }
 
-    private static void fillAlpha(GuiGraphics g, int x1, int y1, int x2, int y2, int color, int alpha) {
-        g.fill(x1, y1, x2, y2, (color & 0x00FFFFFF) | (alpha << 24));
-    }
-
-    private void drawTab(GuiGraphics graphics, int x, int y, Component label, boolean active) {
-        drawTab(graphics, x, y, label, active, false);
-    }
-
     private void drawTab(GuiGraphics graphics, int x, int y, Component label, boolean active, boolean hovered) {
-        int bg = active ? InventoryLayout.SURFACE : hovered ? InventoryLayout.BUTTON_HOVER : InventoryLayout.TAB_IDLE;
+        int bg = active ? InventoryChrome.theme().titleBar() : hovered ? InventoryLayout.BUTTON_HOVER : InventoryLayout.TAB_IDLE;
         graphics.fill(x, y, x + 60, y + InventoryLayout.TAB_H, bg);
-        if (active) {
-            graphics.fill(x, y + InventoryLayout.TAB_H - 1, x + 60, y + InventoryLayout.TAB_H, InventoryLayout.ACCENT);
-        } else {
-            graphics.fill(x, y + InventoryLayout.TAB_H - 1, x + 60, y + InventoryLayout.TAB_H, InventoryLayout.LINE_INNER);
-        }
+        graphics.fill(x, y + InventoryLayout.TAB_H - 1, x + 60, y + InventoryLayout.TAB_H,
+                active ? InventoryChrome.theme().border() : InventoryLayout.LINE_INNER);
         graphics.drawCenteredString(font, label, x + 30, y + 7, active ? InventoryLayout.TEXT : InventoryLayout.MUTED);
     }
 
-    private void drawButton(GuiGraphics graphics, int x, int y, int w, int h, Component label, int mouseX, int mouseY) {
-        boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
-        graphics.fill(x - 1, y - 1, x + w + 1, y + h + 1, hover ? InventoryLayout.ACCENT : InventoryLayout.LINE);
-        graphics.fill(x, y, x + w, y + h, hover ? InventoryLayout.BUTTON_HOVER : InventoryLayout.BUTTON);
-        graphics.drawCenteredString(font, label, x + w / 2, y + (h - 8) / 2, InventoryLayout.TEXT);
+    private boolean hoveringAccessoryButton(int mouseX, int mouseY) {
+        return hoverRect(mouseX, mouseY,
+                leftPos + InventoryLayout.ACCESSORY_BTN_X,
+                topPos + InventoryLayout.ACCESSORY_BTN_Y,
+                InventoryLayout.ACCESSORY_BTN,
+                InventoryLayout.ACCESSORY_BTN);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
-        int bx = leftPos + InventoryLayout.ACCESSORY_BTN_X;
-        int by = topPos + InventoryLayout.ACCESSORY_BTN_Y;
-        boolean inPanel = mouseX >= leftPos && mouseX < leftPos + imageWidth && mouseY >= topPos && mouseY < topPos + imageHeight;
-        if (inPanel) playClick();
-        if (mouseX >= bx && mouseX < bx + InventoryLayout.ACCESSORY_BTN_W
-                && mouseY >= by && mouseY < by + InventoryLayout.ACCESSORY_BTN_H) {
+        swallowRelease = true;
+        if (hoveringAccessoryButton((int) mouseX, (int) mouseY)) {
             BackpackUi.accessories = !BackpackUi.accessories;
+            accessoryScroll = 0;
             return true;
         }
-        int tabX = leftPos + 192;
-        int tabY = topPos;
-        if (BackpackTabs.hasSequence()
-                && mouseX >= tabX && mouseX < tabX + 60 && mouseY >= tabY && mouseY < tabY + InventoryLayout.TAB_H) {
+        int sequenceX = BackpackTabs.sequenceTabX(leftPos);
+        if (sequenceX >= 0
+                && hoverRect((int) mouseX, (int) mouseY, sequenceX, topPos, BackpackTabs.TAB_W, InventoryLayout.TAB_H)) {
             BackpackTabs.openSequence();
             return true;
         }
-        if (minecraft != null && minecraft.player != null && minecraft.player.hasPermissions(2)) {
-            int ex = leftPos + InventoryLayout.EDIT_BTN_X;
-            int ey = topPos + InventoryLayout.EDIT_BTN_Y;
-            if (mouseX >= ex && mouseX < ex + InventoryLayout.ACCESSORY_BTN_W
-                    && mouseY >= ey && mouseY < ey + InventoryLayout.ACCESSORY_BTN_H) {
-                PacketDistributor.sendToServer(new InventoryPayloads.RequestFootprintEditorPayload());
-                return true;
+        int characterX = BackpackTabs.characterTabX(leftPos);
+        if (hoverRect((int) mouseX, (int) mouseY, characterX, topPos, BackpackTabs.TAB_W, InventoryLayout.TAB_H)) {
+            PacketDistributor.sendToServer(new net.exmo.exworld.network.CharacterPayloads.OpenCharacterPayload());
+            return true;
+        }
+        if (BackpackUi.accessories && CuriosPresence.loaded() && accessoryMax > 0
+                && hoverRect((int) mouseX, (int) mouseY, viewX + viewW - 4, viewY, 4, viewH)) {
+            draggingBar = true;
+            return true;
+        }
+        if (BackpackUi.accessories && CuriosPresence.loaded()) {
+            for (CurioHit hit : curioHits) {
+                if (hoverRect((int) mouseX, (int) mouseY, hit.x, hit.y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                    PacketDistributor.sendToServer(new InventoryPayloads.CurioClickPayload(hit.identifier, hit.index));
+                    return true;
+                }
+            }
+            for (LegacyHit hit : legacyHits) {
+                if (hoverRect((int) mouseX, (int) mouseY, hit.x, hit.y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                    PacketDistributor.sendToServer(new InventoryPayloads.AccessoryClickPayload(hit.index));
+                    return true;
+                }
             }
         }
+        int slot = geometricSlot((int) mouseX, (int) mouseY);
+        if (slot >= 0) return pickup(slot, button);
+        swallowRelease = false;
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    private void playClick() {
-        if (minecraft != null && minecraft.getSoundManager() != null) {
-            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F));
+    private int geometricSlot(int mouseX, int mouseY) {
+        int cell = hoveredGridCell(mouseX, mouseY);
+        if (cell >= 0) {
+            int owner = menu.backpack().ownerOf(cell);
+            return owner >= 0 ? owner : cell;
         }
+        for (int i = 0; i < 9; i++) {
+            int hx = leftPos + InventoryLayout.GRID_X + i * InventoryLayout.CELL;
+            if (hoverRect(mouseX, mouseY, hx, topPos + InventoryLayout.HOTBAR_Y, InventoryLayout.CELL, InventoryLayout.CELL)) {
+                return PlayerBackpackMenu.HOTBAR_START + i;
+            }
+        }
+        if (BackpackUi.accessories) {
+            if (CuriosPresence.loaded()) return -1;
+            for (int i = 0; i < PlayerBackpackData.ACCESSORY_COUNT; i++) {
+                int ax = leftPos + InventoryLayout.ACCESSORY_X + (i % 3) * InventoryLayout.CELL;
+                int ay = topPos + InventoryLayout.ACCESSORY_Y + (i / 3) * InventoryLayout.CELL;
+                if (hoverRect(mouseX, mouseY, ax, ay, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                    return PlayerBackpackMenu.ACCESSORY_START + i;
+                }
+            }
+            return -1;
+        }
+        if (!net.exmo.exworld.Config.decryptionMode) {
+            if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.WEAPON1_X, topPos + InventoryLayout.WEAPON1_Y, InventoryLayout.WEAPON_WIDTH, InventoryLayout.ITEM)) {
+                return PlayerBackpackMenu.WEAPON_START;
+            }
+            if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.WEAPON2_X, topPos + InventoryLayout.WEAPON2_Y, InventoryLayout.WEAPON_WIDTH, InventoryLayout.ITEM)) {
+                return PlayerBackpackMenu.WEAPON_START + 1;
+            }
+        }
+        int[] xs = {InventoryLayout.HELMET_X, InventoryLayout.CHEST_X, InventoryLayout.LEGS_X, InventoryLayout.BOOTS_X};
+        int[] ys = {InventoryLayout.HELMET_Y, InventoryLayout.CHEST_Y, InventoryLayout.LEGS_Y, InventoryLayout.BOOTS_Y};
+        for (int i = 0; i < 4; i++) {
+            if (hoverRect(mouseX, mouseY, leftPos + xs[i], topPos + ys[i], InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+                return PlayerBackpackMenu.ARMOR_START + i;
+            }
+        }
+        if (hoverRect(mouseX, mouseY, leftPos + InventoryLayout.CORE_X, topPos + InventoryLayout.CORE_Y, InventoryLayout.ITEM, InventoryLayout.ITEM)) {
+            return PlayerBackpackMenu.CORE_SLOT;
+        }
+        return -1;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (draggingBar && accessoryMax > 0) {
+            int bar = Math.max(12, viewH * viewH / (viewH + accessoryMax));
+            int travel = Math.max(1, viewH - bar);
+            accessoryScroll = Mth.clamp((int) ((mouseY - viewY - bar / 2.0) / travel * accessoryMax), 0, accessoryMax);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        draggingBar = false;
+        if (button == 0 && swallowRelease) {
+            swallowRelease = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
@@ -509,6 +733,11 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (BackpackUi.accessories && CuriosPresence.loaded()
+                && hoverRect((int) mouseX, (int) mouseY, viewX, viewY, viewW, viewH)) {
+            accessoryScroll = Mth.clamp(accessoryScroll - (int) Math.signum(scrollY) * 12, 0, accessoryMax);
+            return true;
+        }
         if (hoveredSlot != null && hoveredSlot.index < PlayerBackpackMenu.GRID_SLOTS && scrollY != 0) {
             PacketDistributor.sendToServer(new InventoryPayloads.RotateBackpackPayload(hoveredIndex()));
             return true;
@@ -523,6 +752,10 @@ public final class PlayerBackpackScreen extends AbstractContainerScreen<PlayerBa
     }
 
     private int hoveredIndex() {
-        return hoveredSlot == null ? -1 : hoveredSlot.index;
+        int slot = geometricSlot((int) xMouse, (int) yMouse);
+        return slot >= 0 ? slot : hoveredSlot == null ? -1 : hoveredSlot.index;
     }
+
+    private record CurioHit(String identifier, int index, int x, int y) {}
+    private record LegacyHit(int index, int x, int y) {}
 }

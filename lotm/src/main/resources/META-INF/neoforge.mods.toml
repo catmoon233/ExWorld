@@ -5,8 +5,8 @@ license="GPL-3.0-or-later"
 [[mods]]
 modId="lotm"
 version="1.0-SNAPSHOT"
-displayName="Lotm"
-description='''ExWorld sequence sheet. Requires the Lord of the Mysteries mod (guimi_mod) and mirrors its pathways and skills.'''
+displayName="诡秘序列"
+description='''ExWorld sequence sheet. Upstream pathways keep their own spells. guimi_mod is required and mirrors beyonder state; pathways upstream does not define are imported from it.'''
 
 [[mixins]]
 config="lotm.mixins.json"
@@ -38,7 +38,7 @@ type="required"
 versionRange="[0.0.1,)"
 ordering="AFTER"
 side="BOTH"
-reason="Sequence pathways and skills are the Lord of the Mysteries ladders."
+reason="Beyonder state, acting, and pathways not yet defined by lotm."
 
 [[dependencies.lotm]]
 modId="irons_spellbooks"
@@ -46,3 +46,11 @@ type="required"
 versionRange="[1.21.1,)"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.lotm]]
+modId="curios"
+type="required"
+versionRange="[5.0.0,)"
+ordering="AFTER"
+side="BOTH"
+reason="Sequence curios equip through Curios slots."

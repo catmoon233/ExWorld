@@ -14,6 +14,7 @@ import net.minecraft.util.FastColor;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,7 +42,9 @@ public class MuzzleFlashParticle extends TextureSheetParticle {
         this.xd = xa;
         this.yd = ya;
         this.zd = za;
-        this.quadSize = 1;
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        double distance = Math.sqrt(camera.distanceToSqr(x, y, z));
+        this.quadSize = (float) Mth.clamp(distance * 0.4, 0.22, 0.8);
         this.rCol = tinted ? tintR : 1f;
         this.gCol = tinted ? tintG : 1f;
         this.bCol = tinted ? tintB : 1f;
@@ -94,10 +97,23 @@ public class MuzzleFlashParticle extends TextureSheetParticle {
             return;
         }
 
+        TextureAtlas atlas = particleAtlas();
+        if (atlas == null) {
+            setSprite(fireSprite);
+            whiteMaskSprite = null;
+            return;
+        }
         String basePath = path.substring(0, path.length() - FIRE_SUFFIX.length());
-        TextureAtlas atlas = Minecraft.getInstance().getModelManager().getAtlas(TextureAtlas.LOCATION_PARTICLES);
         setSprite(atlas.getSprite(fireName.withPath(basePath + TINTED_MASKED_SUFFIX)));
         whiteMaskSprite = atlas.getSprite(fireName.withPath(basePath + WHITE_MASK_SUFFIX));
+    }
+
+    private static TextureAtlas particleAtlas() {
+        try {
+            return Minecraft.getInstance().getModelManager().getAtlas(TextureAtlas.LOCATION_PARTICLES);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     @Override

@@ -69,6 +69,19 @@ public final class InventoryNetwork {
                     sendRules(player);
                     sendEditor(player);
                 });
+        registrar.playToServer(InventoryPayloads.CurioClickPayload.TYPE, InventoryPayloads.CurioClickPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        CuriosPresence.click(player, payload.identifier(), payload.index());
+                    }
+                });
+        registrar.playToServer(InventoryPayloads.AccessoryClickPayload.TYPE, InventoryPayloads.AccessoryClickPayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (context.player() instanceof ServerPlayer player
+                            && player.containerMenu instanceof PlayerBackpackMenu menu) {
+                        menu.clickAccessory(payload.index());
+                    }
+                });
         registrar.playToClient(InventoryPayloads.FootprintEditorPayload.TYPE, InventoryPayloads.FootprintEditorPayload.STREAM_CODEC,
                 (payload, context) -> net.exmo.exworld.client.inventory.InventoryClient.openRuleEditor(payload.rules()));
     }

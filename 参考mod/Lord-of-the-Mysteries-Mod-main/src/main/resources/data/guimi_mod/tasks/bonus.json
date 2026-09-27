@@ -1,0 +1,41 @@
+[
+  {
+    "id": "guimi_mod:bonus_hunt_zombies",
+    "name": "quest.guimi_mod.hunt_zombies.name",
+    "description": "quest.guimi_mod.hunt_zombies.desc",
+    "type": "hunting",
+    "conditions": {
+      "minSequence": 9
+    },
+    "objectives": [
+      {
+        "type": "kill",
+        "target": "minecraft:zombie",
+        "count": 20
+      }
+    ],
+    "rewards": [
+      { "type": "item", "item": "minecraft:emerald", "amount": 3 },
+      { "type": "acting", "amount": 10 }
+    ]
+  },
+  {
+    "id": "guimi_mod:bonus_collect_bone",
+    "name": "quest.guimi_mod.collect_bone.name",
+    "description": "quest.guimi_mod.collect_bone.desc",
+    "type": "collection",
+    "conditions": {
+      "minSequence": 9
+    },
+    "objectives": [
+      {
+        "type": "collect",
+        "target": "minecraft:bone",
+        "count": 16
+      }
+    ],
+    "rewards": [
+      { "type": "spirituality", "amount": 10 }
+    ]
+  }
+]

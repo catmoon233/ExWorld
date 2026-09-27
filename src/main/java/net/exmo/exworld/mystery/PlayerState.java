@@ -1,0 +1,6 @@
+package net.exmo.exworld.mystery;
+
+public enum PlayerState {
+    UNASSIGNED, READY, PAST_ACTIVE, FUTURE_ACTIVE, PAST_DEAD,
+    FUTURE_DOOMED, FUTURE_DEAD, BOARDED, ENDING_CHASE, SPECTATOR
+}

@@ -48,7 +48,7 @@ neoForge {
 }
 
 dependencies {
-    implementation 'curse.maven:geckolib-388172:8350073'
+    implementation "curse.maven:geckolib-388172:8893490"
 }
 
 sourceSets.main.resources {

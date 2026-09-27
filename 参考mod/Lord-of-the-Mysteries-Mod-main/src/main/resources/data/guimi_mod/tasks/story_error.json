@@ -1,0 +1,70 @@
+[
+  {
+    "id": "guimi_mod:error_seq9",
+    "name": "quest.guimi_mod.error_seq9.name",
+    "description": "quest.guimi_mod.error_seq9.desc",
+    "type": "main",
+    "story": true,
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:error_9" }
+    ],
+    "rewards": [
+      { "type": "spirituality", "amount": 20 }
+    ]
+  },
+  {
+    "id": "guimi_mod:error_seq8",
+    "name": "quest.guimi_mod.error_seq8.name",
+    "description": "quest.guimi_mod.error_seq8.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "error",
+      "minSequence": 9,
+      "requiredQuest": "guimi_mod:error_seq9"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:error_8" }
+    ],
+    "rewards": [
+      { "type": "acting", "amount": 15 }
+    ]
+  },
+  {
+    "id": "guimi_mod:error_seq7",
+    "name": "quest.guimi_mod.error_seq7.name",
+    "description": "quest.guimi_mod.error_seq7.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "error",
+      "minSequence": 8,
+      "requiredQuest": "guimi_mod:error_seq8"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:error_7" }
+    ],
+    "rewards": [
+      { "type": "spirituality", "amount": 25 }
+    ]
+  },
+  {
+    "id": "guimi_mod:error_seq6",
+    "name": "quest.guimi_mod.error_seq6.name",
+    "description": "quest.guimi_mod.error_seq6.desc",
+    "type": "main",
+    "story": true,
+    "conditions": {
+      "pathway": "error",
+      "minSequence": 7,
+      "requiredQuest": "guimi_mod:error_seq7"
+    },
+    "objectives": [
+      { "type": "promote", "target": "guimi_mod:error_6" }
+    ],
+    "rewards": [
+      { "type": "acting", "amount": 20 },
+      { "type": "item", "item": "minecraft:paper", "amount": 8 }
+    ]
+  }
+]

@@ -31,9 +31,9 @@ public final class InventoryLayout {
     public static final int BOOTS_Y = LEGS_Y + CELL;
 
     public static final int DOLL_X1 = PAD + ITEM + 8;
-    public static final int DOLL_Y1 = GRID_Y;
+    public static final int DOLL_Y1 = TAB_H + 28;
     public static final int DOLL_X2 = PAD + LEFT_WIDTH - 8;
-    public static final int DOLL_Y2 = DOLL_Y1 + 112;
+    public static final int DOLL_Y2 = GRID_Y + 112;
 
     public static final int WEAPON_WIDTH = ITEM * 3 + GAP * 2;
     public static final int WEAPON1_X = PAD;
@@ -44,13 +44,10 @@ public final class InventoryLayout {
     public static final int CORE_Y = WEAPON2_Y;
 
     public static final int ACCESSORY_X = PAD + 8;
-    public static final int ACCESSORY_Y = GRID_Y + 20;
-    public static final int ACCESSORY_BTN_W = 40;
-    public static final int ACCESSORY_BTN_H = 14;
-    public static final int ACCESSORY_BTN_X = PAD + LEFT_WIDTH - ACCESSORY_BTN_W;
-    public static final int ACCESSORY_BTN_Y = GRID_Y - 2;
-    public static final int EDIT_BTN_X = ACCESSORY_BTN_X;
-    public static final int EDIT_BTN_Y = ACCESSORY_BTN_Y + ACCESSORY_BTN_H + 2;
+    public static final int ACCESSORY_Y = TAB_H + 30;
+    public static final int ACCESSORY_BTN = 20;
+    public static final int ACCESSORY_BTN_X = PAD + LEFT_WIDTH - ACCESSORY_BTN - 4;
+    public static final int ACCESSORY_BTN_Y = TAB_H + 4;
 
     public static final int PANEL = 0xC8282C34;
     public static final int SURFACE = 0xFF323844;

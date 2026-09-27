@@ -1,21 +1,26 @@
 package net.exmo.exworld.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.exmo.exworld.world.generation.IslandLayout;
-import net.exmo.exworld.world.model.ChunkGroupBounds;
 import net.exmo.exworld.Config;
 import net.exmo.exworld.client.battle.BattleClient;
 import net.exmo.exworld.world.model.ChunkGroupShape;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.Level;
+import java.util.ArrayList;
+import java.util.List;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
-/** Renders the outer edge of the active chunk group, never individual Minecraft chunk edges. */
+/** Renders one continuous outer slab per straight region edge, and only inside the render distance. */
 public final class WorldBoundaryRenderer {
+    private static final double HEIGHT_SCALE = 0.7;
     private WorldBoundaryRenderer() {}
 
     public static void render(RenderLevelStageEvent event) {
@@ -25,53 +30,60 @@ public final class WorldBoundaryRenderer {
         if (minecraft.level == null || minecraft.player == null || minecraft.level.dimension() != Level.OVERWORLD) return;
         if (ChunkGroupRenderCuller.bypassBoundary()) return;
         ChunkGroupShape shape = ClientChunkGroupState.active();
-        if (shape == null || !shape.containsPosition(minecraft.player.getX(), minecraft.player.getZ())) {
-            int groupChunks = net.exmo.exworld.world.model.WorldDimensions.DEFAULT_GROUP_CHUNKS;
-            ChunkGroupBounds bounds = ChunkGroupBounds.containing(minecraft.player.getX(), minecraft.player.getZ(), groupChunks);
-            shape = new ChunkGroupShape("fallback", groupChunks, java.util.List.of(
-                    new ChunkGroupShape.Cell(bounds.groupX(), bounds.groupZ())));
-        }
+        if (shape == null || shape.isEmpty() || !shape.containsPosition(minecraft.player.getX(), minecraft.player.getZ())) return;
         Vec3 camera = event.getCamera().getPosition();
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         pose.translate(-camera.x, -camera.y, -camera.z);
+        boolean decryption = Config.decryptionMode;
         boolean legacy = Config.legacyRegionBoundary;
         double bottom;
         double top;
-        if (legacy) {
+        if (decryption || legacy) {
+            // Fixed full build height. Decryption mode must not follow the player.
             bottom = minecraft.level.getMinBuildHeight();
             top = minecraft.level.getMaxBuildHeight();
         } else if (ClientChunkGroupState.archipelago()) {
-            // A fixed 5-block band at the island-top level, never following the player up and down.
+            // A fixed band at the island-top level, never following the player up and down.
             bottom = IslandLayout.DEFAULT_MIN_Y;
             top = IslandLayout.DEFAULT_MIN_Y + 5.0;
         } else {
             bottom = minecraft.player.getY() - 2.0;
             top = minecraft.player.getY() + 3.0;
         }
+        top = bottom + (top - bottom) * HEIGHT_SCALE;
         double thickness = 0.28;
-        float alpha = legacy ? 0.56F : 0.34F;
-        int color = regionColor(shape.id());
-        float red = ((color >> 16) & 0xFF) / 255F;
-        float green = ((color >> 8) & 0xFF) / 255F;
-        float blue = (color & 0xFF) / 255F;
+        float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        Vec3 background = backgroundColor(minecraft, event.getCamera(), partialTick);
+        float alpha = 0.10F;
+        float red = (float) background.x;
+        float green = (float) background.y;
+        float blue = (float) background.z;
 
-        // BufferSource may reuse one BufferBuilder for non-fixed render types. Finish one type before requesting the
-        // next, otherwise getBuffer(debugFilledBox) can close the still-referenced lines consumer.
-        VertexConsumer mask = minecraft.renderBuffers().bufferSource().getBuffer(RenderType.debugFilledBox());
-        for (ChunkGroupShape.Cell cell : shape.boundaryCells()) {
-            ChunkGroupBounds bounds = ChunkGroupBounds.forGroup(cell.x(), cell.z(), shape.groupChunks());
-            int edges = shape.boundaryMask(cell);
-            if ((edges & ChunkGroupShape.WEST) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.minX() + thickness, top, bounds.maxZ(), alpha, red, green, blue);
-            if ((edges & ChunkGroupShape.EAST) != 0) addWall(pose, mask, bounds.maxX() - thickness, bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.maxZ(), alpha, red, green, blue);
-            if ((edges & ChunkGroupShape.NORTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.minZ(),
-                    bounds.maxX(), top, bounds.minZ() + thickness, alpha, red, green, blue);
-            if ((edges & ChunkGroupShape.SOUTH) != 0) addWall(pose, mask, bounds.minX(), bottom, bounds.maxZ() - thickness,
-                    bounds.maxX(), top, bounds.maxZ(), alpha, red, green, blue);
+        int renderDistance = minecraft.options.getEffectiveRenderDistance();
+        int originX = Mth.floor(camera.x) >> 4;
+        int originZ = Mth.floor(camera.z) >> 4;
+        double windowMinX = (originX - renderDistance) * 16.0;
+        double windowMaxX = (originX + renderDistance + 1) * 16.0;
+        double windowMinZ = (originZ - renderDistance) * 16.0;
+        double windowMaxZ = (originZ + renderDistance + 1) * 16.0;
+        double wallTop = top;
+        List<BoundarySlabs.Slab> slabs = new ArrayList<>();
+        if (top - bottom > thickness + 0.02) {
+            wallTop = top - thickness - 0.01;
+            slabs.addAll(BoundarySlabs.caps(shape, top, thickness,
+                    windowMinX, windowMinZ, windowMaxX, windowMaxZ));
         }
-        minecraft.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
+        slabs.addAll(BoundarySlabs.visible(shape, bottom, wallTop, thickness,
+                windowMinX, windowMinZ, windowMaxX, windowMaxZ));
+        if (!slabs.isEmpty()) {
+            VertexConsumer mask = minecraft.renderBuffers().bufferSource().getBuffer(RenderType.debugFilledBox());
+            for (BoundarySlabs.Slab slab : slabs) {
+                addWall(pose, mask, slab.minX(), slab.minY(), slab.minZ(), slab.maxX(), slab.maxY(), slab.maxZ(),
+                        alpha, red, green, blue);
+            }
+            minecraft.renderBuffers().bufferSource().endBatch(RenderType.debugFilledBox());
+        }
         pose.popPose();
     }
 
@@ -81,9 +93,14 @@ public final class WorldBoundaryRenderer {
                 red, green, blue, alpha);
     }
 
-    /** One colour per region, matching the strategic-map palette. */
-    private static int regionColor(String id) {
-        int[] palette = {0x79A4A8, 0xAE936D, 0x729176, 0xA3787B, 0x8984A8, 0xA3A073, 0x709590, 0xA27B96};
-        return palette[Math.floorMod(id.hashCode(), palette.length)];
+    /** Current fog is the distance background and already follows time, weather and biome. Sky fills the rest. */
+    private static Vec3 backgroundColor(Minecraft minecraft, Camera camera, float partialTick) {
+        Vec3 sky = minecraft.level.getSkyColor(camera.getPosition(), partialTick);
+        float[] fog = RenderSystem.getShaderFogColor();
+        if (fog[0] + fog[1] + fog[2] <= 0.02F) return sky;
+        return new Vec3(
+                Mth.lerp(0.35, fog[0], sky.x),
+                Mth.lerp(0.35, fog[1], sky.y),
+                Mth.lerp(0.35, fog[2], sky.z));
     }
 }

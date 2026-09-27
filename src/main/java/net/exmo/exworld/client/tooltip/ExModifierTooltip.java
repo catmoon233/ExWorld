@@ -117,7 +117,7 @@ public final class ExModifierTooltip {
             Optional<ModifierEntryDefinition> definition = source.entry(view.entryId());
             List<String> attributes = definition
                     .map(d -> d.attributes().stream()
-                            .map(spec -> formatAttribute(spec, view.level()))
+                            .map(spec -> formatAttribute(spec, view.level(), tr))
                             .filter(text -> !text.isBlank())
                             .toList())
                     .orElse(List.of());
@@ -198,20 +198,56 @@ public final class ExModifierTooltip {
 
     /** Formats one attribute with {@link AttributeSpec#amountAt(int)} so suit tiers scale with pieces. */
     public static String formatAttribute(AttributeSpec spec, int level) {
+        return formatAttribute(spec, level, null);
+    }
+
+    public static String formatAttribute(AttributeSpec spec, int level, Function<String, String> translate) {
         if (spec == null) return "";
         double amount = spec.amountAt(Math.max(1, level));
         boolean percent = spec.operation() != AttributeModifier.Operation.ADD_VALUE;
         String number = formatNumber(percent ? amount * 100.0 : amount);
         if (percent) number += "%";
         String sign = amount >= 0 ? "+" : "";
-        return sign + number + " " + pretty(spec.attribute().getPath());
+        return sign + number + " " + attributeName(spec.attribute(), translate);
+    }
+
+    static String attributeName(ResourceLocation id, Function<String, String> translate) {
+        if (id == null) return "";
+        Function<String, String> tr = translate == null ? ExModifierTooltip::clientTranslate : translate;
+        for (String key : attributeKeys(id)) {
+            String name = tr.apply(key);
+            if (name != null && !name.isBlank() && !name.equals(key)) return name;
+        }
+        return pretty(id.getPath());
+    }
+
+    private static List<String> attributeKeys(ResourceLocation id) {
+        String path = id.getPath();
+        if ("minecraft".equals(id.getNamespace())) {
+            return List.of("attribute.name." + path, "attribute.minecraft." + path);
+        }
+        return List.of(
+                "attribute." + id.getNamespace() + "." + path,
+                "attribute.name." + id.getNamespace() + "." + path,
+                "attribute.name." + path);
+    }
+
+    private static String clientTranslate(String key) {
+        try {
+            if (net.minecraft.client.resources.language.I18n.exists(key)) {
+                return net.minecraft.client.resources.language.I18n.get(key);
+            }
+        } catch (Throwable ignored) {
+            // Harness and dedicated server have no client language.
+        }
+        return key;
     }
 
     private static String formatLevel(SuitLevel level, Function<String, String> translate) {
         StringBuilder text = new StringBuilder();
         for (AttributeSpec spec : level.attributes()) {
             if (!text.isEmpty()) text.append(", ");
-            text.append(formatAttribute(spec, level.pieces()));
+            text.append(formatAttribute(spec, level.pieces(), translate));
         }
         if (text.isEmpty()) {
             String trigger = level.trigger() == null ? "" : pretty(level.trigger().getPath());

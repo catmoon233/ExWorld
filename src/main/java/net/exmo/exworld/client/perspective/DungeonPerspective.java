@@ -126,6 +126,12 @@ public final class DungeonPerspective {
     }
 
     public static void computeAngles(ViewportEvent.ComputeCameraAngles event) {
+        if (net.exmo.exworld.mystery.client.MysteryCamera.active()) {
+            event.setYaw(net.exmo.exworld.mystery.client.MysteryCamera.yaw((float) event.getPartialTick()));
+            event.setPitch(net.exmo.exworld.mystery.client.MysteryCamera.pitch((float) event.getPartialTick()));
+            event.setRoll(0);
+            return;
+        }
         if (!active()) return;
         if (net.exmo.exworld.client.camera.AdvancedCameraDirector.active()) {
             event.setYaw(net.exmo.exworld.client.camera.AdvancedCameraDirector.yaw((float) event.getPartialTick()));

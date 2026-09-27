@@ -21,7 +21,8 @@
     "client.SoundEngineMixin",
     "client.SectionOcclusionGraphMixin",
     "client.SpellBarOverlayMixin",
-    "client.GuiTabListMixin"
+    "client.GuiTabListMixin",
+    "client.PlayerNameTagMixin"
   ],
   "injectors": {
     "defaultRequire": 1

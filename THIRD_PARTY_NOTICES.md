@@ -3,6 +3,7 @@
 - The advanced camera behavior incorporates code adapted from `StarRailExpress2`, licensed under GNU GPL v3. Its original copyright and license headers are retained in adapted source files.
 - Iron's Spells 'n Spellbooks is a required runtime dependency. Its code and assets, including spell icons, remain subject to that project's license; ExWorld references those assets by resource identifier and does not relicense them.
 - Minecraft, NeoForge, GeckoLib, Player Animator, Curios, Sodium and other runtime dependencies remain subject to their respective licenses.
+- Memory playback uses the separate `reforgedplaymod-1.21.1-0.3.jar` client dependency, based on the local `参考mod/ReForgedPlay-1.21` source. ReForgedPlay and Replay Mod retain their own GPL-3.0-or-later notices; ExWorld does not embed their classes in its JAR.
 - Item tooltip chrome was designed against Simply Tooltips, EnhancedTooltips, ColorTooltips and Obscure Tooltips as visual references only. ExWorld ships original tooltip code and does not bundle or relicense those projects.
 - Player backpack grid occupancy, stacking, rotation and creative size/quality editing were designed against PetiteInventory and Item-Rarity as visual/interaction references only. ExWorld ships original inventory code and does not bundle or relicense those AGPL-3.0 projects.
 

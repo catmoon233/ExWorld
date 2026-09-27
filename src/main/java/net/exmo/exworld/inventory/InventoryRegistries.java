@@ -32,6 +32,8 @@ public final class InventoryRegistries {
 
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<PlayerBackpackData>> BACKPACK =
             ATTACHMENTS.register("backpack", () -> AttachmentType.serializable(PlayerBackpackData::new).build());
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<net.exmo.exworld.character.CharacterIntro>> CHARACTER_INTRO =
+            ATTACHMENTS.register("character_intro", () -> AttachmentType.serializable(net.exmo.exworld.character.CharacterIntro::new).copyOnDeath().build());
 
     public static final DeferredHolder<MenuType<?>, MenuType<PlayerBackpackMenu>> PLAYER_BACKPACK =
             MENUS.register("player_backpack", () -> IMenuTypeExtension.create(PlayerBackpackMenu::new));

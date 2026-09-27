@@ -2,7 +2,9 @@ package net.exmo.exworld.mixin.client;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.PostChain;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 /** Accesses vanilla's final FOV calculation so projection matches every live camera modifier. */
@@ -10,4 +12,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface GameRendererAccessor {
     @Invoker("getFov")
     double exworld$renderedFov(Camera camera, float partialTick, boolean useFovSetting);
+
+    @Accessor("postEffect")
+    PostChain exworld$postEffect();
 }

@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "guimi_mod:currency",
+  "ingredients": [
+    { "item": "guimi_mod:gold_pound" }
+  ],
+  "result": {
+    "id": "guimi_mod:soyle",
+    "count": 20
+  }
+}

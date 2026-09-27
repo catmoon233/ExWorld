@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="GPL-3.0-or-later"
+
+[[mods]]
+modId="exkeys"
+version="1.0-SNAPSHOT"
+displayName="ExKeys"
+description='''Server-side keybind policy. Hide a key from the controls screen, stop it from firing, or both. Clients pull the server file; singleplayer uses the local cache.'''
+
+[[mixins]]
+config="exkeys.mixins.json"
+
+[[dependencies.exkeys]]
+modId="neoforge"
+type="required"
+versionRange="[21,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.exkeys]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"

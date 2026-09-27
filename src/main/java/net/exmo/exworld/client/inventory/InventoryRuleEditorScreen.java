@@ -10,27 +10,37 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-/** GUI editor for item footprint rules, mirroring PetiteInventory's edit-mode behaviour. */
+/** Searchable footprint editor. Rows are drawn, not one button per item. */
 public final class InventoryRuleEditorScreen extends Screen {
     private static final ItemFootprint[] SIZES = {
             ItemFootprint.UNIT, ItemFootprint.of(1, 2), ItemFootprint.of(1, 3),
             ItemFootprint.of(2, 1), ItemFootprint.of(2, 2), ItemFootprint.of(2, 3),
             ItemFootprint.of(3, 1), ItemFootprint.of(3, 2), ItemFootprint.of(3, 3)
     };
+    private static final int ROW = 22;
+    private static final int LIMIT = 80;
 
     private final Map<String, ItemFootprint> rules;
     private final List<String> ids;
-    private EditBox idField;
+    private EditBox search;
+    private Button sizeButton;
     private int sizeIndex;
     private int scroll;
+    private boolean dragging;
+    private String cachedQuery = "\0";
+    private List<String> visible = List.of();
 
     public InventoryRuleEditorScreen(Map<String, ItemFootprint> rules) {
         super(Component.translatable("screen.exworld.footprint_editor"));
@@ -39,35 +49,30 @@ public final class InventoryRuleEditorScreen extends Screen {
         this.ids.sort(Comparator.naturalOrder());
     }
 
+    @Override
     protected void init() {
         int left = panelX();
         int top = panelY();
         int w = InventoryLayout.IMAGE_WIDTH;
-        idField = new EditBox(font, left + 8, top + 28, w - 16, 18, Component.translatable("screen.exworld.footprint_item"));
-        idField.setMaxLength(128);
-        addRenderableWidget(idField);
+        search = new EditBox(font, left + 8, top + 24, w - 16, 18, Component.translatable("screen.exworld.footprint_search"));
+        search.setMaxLength(128);
+        search.setHint(Component.translatable("screen.exworld.footprint_search"));
+        search.setResponder(value -> {
+            scroll = 0;
+            cachedQuery = "\0";
+        });
+        addRenderableWidget(search);
         addRenderableWidget(Button.builder(Component.translatable("screen.exworld.footprint_from_hand"), b -> fromHand())
-                .bounds(left + 8, top + 50, 72, 18).build());
-        addRenderableWidget(Button.builder(Component.literal(SIZES[sizeIndex].token()), b -> {
+                .bounds(left + 8, top + 46, 72, 18).build());
+        sizeButton = Button.builder(Component.literal(SIZES[sizeIndex].token()), b -> {
             sizeIndex = (sizeIndex + 1) % SIZES.length;
-            rebuildWidgets();
-        }).bounds(left + 84, top + 50, 48, 18).build());
+            sizeButton.setMessage(Component.literal(SIZES[sizeIndex].token()));
+        }).bounds(left + 84, top + 46, 48, 18).build();
+        addRenderableWidget(sizeButton);
         addRenderableWidget(Button.builder(Component.translatable("screen.exworld.footprint_apply"), b -> apply())
-                .bounds(left + 136, top + 50, 48, 18).build());
+                .bounds(left + 136, top + 46, 48, 18).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(left + w - 56, top + 50, 48, 18).build());
-
-        int listTop = top + 76;
-        int listBottom = top + InventoryLayout.IMAGE_HEIGHT - 8;
-        int y = listTop - scroll;
-        for (String id : ids) {
-            if (y + 16 > listTop && y < listBottom) {
-                int rowY = y;
-                addRenderableWidget(Button.builder(Component.literal("×"), b -> remove(id))
-                        .bounds(left + w - 26, rowY, 18, 16).build());
-            }
-            y += 20;
-        }
+                .bounds(left + w - 56, top + 46, 48, 18).build());
     }
 
     private int panelX() {
@@ -78,16 +83,18 @@ public final class InventoryRuleEditorScreen extends Screen {
         return (height - InventoryLayout.IMAGE_HEIGHT) / 2;
     }
 
+    private int listTop() {
+        return panelY() + 72;
+    }
+
+    private int listH() {
+        return InventoryLayout.IMAGE_HEIGHT - 80;
+    }
+
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, width, height, InventoryLayout.PANEL);
-        int x = panelX();
-        int y = panelY();
-        int w = InventoryLayout.IMAGE_WIDTH;
-        int h = InventoryLayout.IMAGE_HEIGHT;
-        graphics.fill(x - 1, y - 1, x + w + 1, y + h + 1, InventoryLayout.LINE);
-        graphics.fill(x, y, x + w, y + h, InventoryLayout.SURFACE);
-        graphics.fill(x, y + 72, x + w, y + 73, InventoryLayout.LINE_INNER);
+        graphics.fill(0, 0, width, height, 0xC008080C);
+        InventoryChrome.panel(graphics, panelX(), panelY(), InventoryLayout.IMAGE_WIDTH, InventoryLayout.IMAGE_HEIGHT, 1f);
     }
 
     @Override
@@ -97,57 +104,190 @@ public final class InventoryRuleEditorScreen extends Screen {
         int top = panelY();
         int w = InventoryLayout.IMAGE_WIDTH;
         graphics.drawCenteredString(font, title, left + w / 2, top + 8, InventoryLayout.TEXT);
+        drawSizePreview(graphics, left + 188, top + 46);
 
-        int listTop = top + 76;
-        int listBottom = top + InventoryLayout.IMAGE_HEIGHT - 8;
-        graphics.enableScissor(left + 2, listTop, left + w - 2, listBottom);
-        int y = listTop + 4 - scroll;
-        for (String id : ids) {
-            ItemFootprint footprint = rules.get(id);
-            String size = footprint == null ? "1x1" : footprint.token();
-            graphics.drawString(font, displayName(id), left + 10, y + 1, InventoryLayout.TEXT);
-            graphics.drawString(font, size, left + w - 70, y + 1, InventoryLayout.MUTED);
-            y += 20;
+        List<String> rows = visible();
+        int listTop = listTop();
+        int listH = listH();
+        int max = maxScroll(rows);
+        scroll = Mth.clamp(scroll, 0, max);
+        graphics.enableScissor(left + 4, listTop, left + w - 8, listTop + listH);
+        int y = listTop + 2 - scroll;
+        for (String id : rows) {
+            if (y + ROW > listTop && y < listTop + listH) {
+                boolean hover = mouseX >= left + 6 && mouseX < left + w - 28 && mouseY >= y && mouseY < y + ROW - 2
+                        && mouseY >= listTop && mouseY < listTop + listH;
+                if (hover || id.equals(search.getValue().trim())) {
+                    graphics.fill(left + 6, y, left + w - 28, y + ROW - 2, hover ? InventoryLayout.BUTTON_HOVER : InventoryLayout.BUTTON);
+                }
+                drawIcon(graphics, id, left + 8, y + 2);
+                ItemFootprint footprint = rules.get(id);
+                String size = footprint == null ? "" : footprint.token();
+                graphics.drawString(font, fit(displayName(id), w - 120), left + 28, y + 6, InventoryLayout.TEXT, false);
+                if (!size.isEmpty()) graphics.drawString(font, size, left + w - 78, y + 6, InventoryLayout.MUTED, false);
+                if (footprint != null) graphics.drawString(font, "×", left + w - 24, y + 6, InventoryLayout.TEXT, false);
+            }
+            y += ROW;
         }
         graphics.disableScissor();
-        if (ids.isEmpty()) {
-            graphics.drawCenteredString(font, Component.translatable("screen.exworld.footprint_empty"), left + w / 2, listTop + 8, InventoryLayout.MUTED);
+        if (rows.isEmpty()) {
+            graphics.drawCenteredString(font, Component.translatable("screen.exworld.footprint_empty"),
+                    left + w / 2, listTop + 8, InventoryLayout.MUTED);
         }
+        InventoryChrome.scrollbar(graphics, left + w - 6, listTop, listH, max, scroll);
+    }
+
+    private void drawSizePreview(GuiGraphics graphics, int x, int y) {
+        ItemFootprint footprint = SIZES[sizeIndex];
+        for (int row = 0; row < footprint.height(); row++) {
+            for (int col = 0; col < footprint.width(); col++) {
+                int cx = x + col * 5;
+                int cy = y + row * 5;
+                graphics.fill(cx, cy, cx + 4, cy + 4, InventoryLayout.LINE);
+            }
+        }
+    }
+
+    private void drawIcon(GuiGraphics graphics, String id, int x, int y) {
+        Item item = item(id);
+        if (item == null || item == Items.AIR) return;
+        graphics.renderItem(new ItemStack(item), x, y);
+    }
+
+    private List<String> visible() {
+        String query = search == null ? "" : search.getValue().trim().toLowerCase(Locale.ROOT);
+        if (query.equals(cachedQuery)) return visible;
+        cachedQuery = query;
+        List<String> rows = new ArrayList<>();
+        if (query.isEmpty()) {
+            rows.addAll(ids);
+        } else {
+            for (String id : ids) if (matches(id, query)) rows.add(id);
+            int extra = 0;
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (item == null || item == Items.AIR) continue;
+                String id = BuiltInRegistries.ITEM.getKey(item).toString();
+                if (rules.containsKey(id) || !matches(id, query)) continue;
+                rows.add(id);
+                if (++extra >= LIMIT) break;
+            }
+        }
+        visible = rows;
+        return rows;
+    }
+
+    private boolean matches(String id, String query) {
+        if (id.toLowerCase(Locale.ROOT).contains(query)) return true;
+        return displayName(id).toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private String displayName(String id) {
+        Item item = item(id);
+        if (item == null || item == Items.AIR) return id;
+        return item.getDescription().getString();
+    }
+
+    private Item item(String id) {
+        ResourceLocation location = ResourceLocation.tryParse(id);
+        if (location == null) return Items.AIR;
+        return BuiltInRegistries.ITEM.get(location);
+    }
+
+    private String fit(String text, int max) {
+        if (font.width(text) <= max) return text;
+        String ellipsis = "…";
+        int limit = Math.max(0, max - font.width(ellipsis));
+        int end = text.length();
+        while (end > 0 && font.width(text.substring(0, end)) > limit) end--;
+        return text.substring(0, end) + ellipsis;
+    }
+
+    private int maxScroll(List<String> rows) {
+        return Math.max(0, rows.size() * ROW - listH());
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && overScrollbar(mouseX, mouseY)) {
+            dragging = true;
+            dragTo(mouseY);
+            return true;
+        }
+        if (button == 0 && overList(mouseX, mouseY)) {
+            int index = (int) ((mouseY - listTop() + scroll) / ROW);
+            List<String> rows = visible();
+            if (index >= 0 && index < rows.size()) {
+                String id = rows.get(index);
+                int left = panelX();
+                int w = InventoryLayout.IMAGE_WIDTH;
+                int rowY = listTop() + index * ROW - scroll;
+                if (rules.containsKey(id) && mouseX >= left + w - 28 && mouseX < left + w - 10 && mouseY >= rowY && mouseY < rowY + ROW) {
+                    PacketDistributor.sendToServer(new InventoryPayloads.FootprintEditPayload(id, "", true));
+                    return true;
+                }
+                search.setValue(id);
+                ItemFootprint footprint = rules.get(id);
+                if (footprint != null) {
+                    for (int i = 0; i < SIZES.length; i++) {
+                        if (SIZES[i].width() == footprint.width() && SIZES[i].height() == footprint.height()) sizeIndex = i;
+                    }
+                    sizeButton.setMessage(Component.literal(SIZES[sizeIndex].token()));
+                }
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (dragging) {
+            dragTo(mouseY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        dragging = false;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private void dragTo(double mouseY) {
+        int max = maxScroll(visible());
+        if (max <= 0) return;
+        int bar = Math.max(12, listH() * listH() / (listH() + max));
+        int travel = Math.max(1, listH() - bar);
+        scroll = Mth.clamp((int) ((mouseY - listTop() - bar / 2.0) / travel * max), 0, max);
+    }
+
+    private boolean overList(double mouseX, double mouseY) {
+        return mouseX >= panelX() + 4 && mouseX < panelX() + InventoryLayout.IMAGE_WIDTH - 8
+                && mouseY >= listTop() && mouseY < listTop() + listH();
+    }
+
+    private boolean overScrollbar(double mouseX, double mouseY) {
+        return mouseX >= panelX() + InventoryLayout.IMAGE_WIDTH - 8 && mouseX < panelX() + InventoryLayout.IMAGE_WIDTH - 2
+                && mouseY >= listTop() && mouseY < listTop() + listH();
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int listH = InventoryLayout.IMAGE_HEIGHT - 84;
-        int maxScroll = Math.max(0, ids.size() * 20 - listH);
-        scroll = Math.max(0, Math.min(maxScroll, scroll - (int) (scrollY * 12)));
-        rebuildWidgets();
+        if (!overList(mouseX, mouseY) && !overScrollbar(mouseX, mouseY)) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        scroll = Mth.clamp(scroll - (int) Math.signum(scrollY) * ROW, 0, maxScroll(visible()));
         return true;
-    }
-
-
-    private String displayName(String id) {
-        ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null) return id;
-        Item item = BuiltInRegistries.ITEM.get(location);
-        if (item == null || item == net.minecraft.world.item.Items.AIR) return id;
-        return item.getDescription().getString() + "  (" + id + ")";
     }
 
     private void fromHand() {
         if (minecraft == null || minecraft.player == null) return;
-        var stack = minecraft.player.getMainHandItem();
-        if (!stack.isEmpty()) {
-            idField.setValue(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-        }
+        ItemStack stack = minecraft.player.getMainHandItem();
+        if (!stack.isEmpty()) search.setValue(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
     }
 
     private void apply() {
-        String id = idField.getValue().trim();
+        String id = search.getValue().trim();
         if (id.isBlank()) return;
         PacketDistributor.sendToServer(new InventoryPayloads.FootprintEditPayload(id, SIZES[sizeIndex].token(), false));
-    }
-
-    private void remove(String id) {
-        PacketDistributor.sendToServer(new InventoryPayloads.FootprintEditPayload(id, "", true));
     }
 }

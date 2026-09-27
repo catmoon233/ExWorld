@@ -1,0 +1,1 @@
+{"type": "minecraft:block", "pools": [{"rolls": 1, "entries": [{"type": "minecraft:item", "name": "guimi_mod:jin_bian_tai_yang_hua"}], "conditions": [{"condition": "minecraft:survives_explosion"}]}]}

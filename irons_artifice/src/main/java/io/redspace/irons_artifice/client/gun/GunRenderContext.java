@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -68,12 +69,15 @@ public final class GunRenderContext {
     }
 
     public static GunRenderContext capture(GunItem gun, ItemStack stack, ItemDisplayContext perspective, float partialTick, int packedLight) {
+        GunRenderOwner.Holder renderHolder = GunRenderOwner.current();
         LivingEntity owner = findOwner(stack);
         ReloadState reload = ReloadState.get(stack);
         HandOccupancy occupancy = owner == null ? gun.getGun().defaultOccupancy() : GunItem.currentOccupancy(owner, stack);
         if (occupancy == null) {
             occupancy = HandOccupancy.BOTH;
         }
+        int entityId = renderHolder != null ? renderHolder.entityId() : owner == null ? -1 : owner.getId();
+        InteractionHand hand = renderHolder == null ? null : renderHolder.hand();
         return new GunRenderContext(
                 stack,
                 gun,
@@ -81,21 +85,25 @@ public final class GunRenderContext {
                 partialTick,
                 packedLight,
                 MagazineContents.has(stack) ? MagazineContents.get(stack) : null,
-                GunItem.reloadAnimationSeconds(stack),
+                entityId >= 0 ? GunItem.reloadAnimationSeconds(stack, entityId, hand) : 0,
                 reload != null ? reload.percent(partialTick) : 0f,
                 (float) GunplayManager.compose(owner, gun.getGun(), stack).value(ShotComponents.MUZZLE_OFFSET),
                 gun.getGun().animationAdjusters(),
                 stack.getOrDefault(DataComponentRegistry.ATTACHMENT.get(), AttachmentMap.EMPTY),
                 occupancy,
-                owner == null ? null : owner.getId()
+                entityId >= 0 ? entityId : null
         );
     }
 
-    private static LivingEntity findOwner(ItemStack stack) {
+    public static LivingEntity findOwner(ItemStack stack) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
         if (level == null) {
             return null;
+        }
+        GunRenderOwner.Holder holder = GunRenderOwner.current();
+        if (holder != null && level.getEntity(holder.entityId()) instanceof LivingEntity rendered) {
+            return rendered;
         }
         if (minecraft.player != null && holds(minecraft.player, stack)) {
             return minecraft.player;

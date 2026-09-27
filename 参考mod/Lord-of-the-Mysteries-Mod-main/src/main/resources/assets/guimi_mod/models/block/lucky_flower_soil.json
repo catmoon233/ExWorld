@@ -1,0 +1,21 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "guimi_mod:block/lucky_flower_soil",
+    "all": "guimi_mod:block/lucky_flower_soil"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#all", "uv": [8, 0, 12, 4] },
+        "up":    { "texture": "#all", "uv": [0, 8, 4, 12] },
+        "north": { "texture": "#all", "uv": [0, 0, 4, 4] },
+        "south": { "texture": "#all", "uv": [0, 0, 4, 4] },
+        "west":  { "texture": "#all", "uv": [0, 0, 4, 4] },
+        "east":  { "texture": "#all", "uv": [0, 0, 4, 4] }
+      }
+    }
+  ]
+}

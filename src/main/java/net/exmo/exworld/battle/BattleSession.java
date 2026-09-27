@@ -34,6 +34,9 @@ public final class BattleSession {
     public static final int OUTCOME_PRESENTATION_TICKS = 30;
     public static final int RESULT_TIMEOUT_TICKS = 60 * 20;
     public static final int RETURNING_TICKS = 10;
+    /** Hard cap on a live session. Any battle that cannot terminate on its own is force-aborted so its
+     *  participants are never held in the world-damage gate (immune to damage and death) indefinitely. */
+    public static final long MAX_BATTLE_TICKS = 60L * 60L * 20L;
     private final BattleId id;
     private final EncounterRequest request;
     private final ArenaGrid arena;
@@ -480,6 +483,10 @@ public final class BattleSession {
     public void tick() {
         battleTicks++;
         eventBus.post(new BattleEvents.Tick(this, battleTicks));
+        if (battleTicks >= MAX_BATTLE_TICKS && !state.terminal()) {
+            finish(BattleState.ABORTED, BattleResult.Outcome.ABORTED);
+            return;
+        }
         if (!actionLocks.isEmpty()) {
             actionLocks.replaceAll((actor, ticks) -> ticks - 1);
             actionLocks.entrySet().removeIf(entry -> entry.getValue() <= 0);

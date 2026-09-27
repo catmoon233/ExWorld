@@ -27,6 +27,11 @@ public final class ExworldHelpCatalog {
                 line("/exworld help", "列出主题"),
                 line("/exworld help <topic>", "查看一个主题"),
                 line("/exworld help all", "查看全部指令"));
+        topic("inventory", "背包",
+                line("/exworld inventory edit", "打开物品占位配置。需要 2 级权限"));
+        topic("character", "人物",
+                line("/exworld character import <targets> <file.md>", "把运行目录内的 Markdown 导入为人物介绍。需要 2 级权限"),
+                line("/exworld character clear <targets>", "清空人物介绍。需要 2 级权限"));
         topic("chat", "附近聊天",
                 line("/exworld chat", "打开附近聊天 GUI。创造或 2 级权限可改距离和垂直范围"));
         topic("world", "世界",
@@ -104,6 +109,17 @@ public final class ExworldHelpCatalog {
                 line("/fight debug cards give <card> [amount]", "给予卡牌"),
                 line("/fight debug cards deck show|clear", "查看或清空牌组"),
                 line("/fight debug cards deck add|remove <card>", "编辑牌组"));
+        topic("memory", "记忆回放",
+                line("/exworld memory record <id>", "在 ReForgedPlay 录像中标记记忆起点；仅客户端"),
+                line("/exworld memory stop", "标记终点；退出世界后生成可播放录像"),
+                line("/exworld memory play <id>", "退出当前世界并播放记忆片段"),
+                line("/exworld memory loop <id>", "退出当前世界并循环播放片段"),
+                line("/exworld memory halt", "停止记忆回放，返回主菜单"),
+                line("/exworld memory start <id> <秒>", "设置录像中的起点秒数"),
+                line("/exworld memory end <id> <秒>", "设置录像中的终点秒数"),
+                line("/exworld memory list", "列出本机已封存的记忆"),
+                line("/exworld memory delete <id>", "删除记忆标记，保留原始录像"),
+                line("/exworld memory status", "查看录制和回放状态"));
         topic("client", "仅客户端",
                 line("/exworld webview", "打开 WebView2 窗口"),
                 line("/exworldvoice record <id>", "录制语音模板"),

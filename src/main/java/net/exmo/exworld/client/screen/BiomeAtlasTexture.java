@@ -15,6 +15,7 @@ final class BiomeAtlasTexture implements AutoCloseable {
     BiomeAtlasTexture(WorldSnapshot snapshot) {
         NativeImage image = new NativeImage(snapshot.mapWidth(), snapshot.mapHeight(), false);
         try {
+            clear(image);
             for (MapTile tile : snapshot.tiles()) {
                 int color = 0xFF000000 | tile.biome().mapColor();
                 int abgr = color & 0xFF00FF00 | (color & 0x00FF0000) >> 16 | (color & 0x000000FF) << 16;
@@ -33,6 +34,13 @@ final class BiomeAtlasTexture implements AutoCloseable {
     }
 
     ResourceLocation location() { return location; }
+
+    /** memAlloc leaves unused cells uninitialized; an unpainted cell must stay transparent void, not random color. */
+    private static void clear(NativeImage image) {
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) image.setPixelRGBA(x, y, 0);
+        }
+    }
 
     @Override public void close() { Minecraft.getInstance().getTextureManager().release(location); }
 }

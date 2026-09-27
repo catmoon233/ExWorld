@@ -10,17 +10,25 @@ public final class ChunkGroupVisibilityTestHarness {
     public static void main(String[] args) {
         ChunkGroupShape shape = new ChunkGroupShape("l", 4, List.of(
                 new ChunkGroupShape.Cell(0, 0), new ChunkGroupShape.Cell(1, 0), new ChunkGroupShape.Cell(0, 1)));
-        boolean previous = Config.legacyRegionBoundary;
+        boolean previousLegacy = Config.legacyRegionBoundary;
+        boolean previousDecryption = Config.decryptionMode;
         try {
             Config.legacyRegionBoundary = true;
+            Config.decryptionMode = false;
             require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 0), "entity inside the active group must render");
             require(!ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
                     "entity outside the active concave group must not render");
             Config.legacyRegionBoundary = false;
             require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
                     "short translucent wall must leave entities outside the group unclamped");
+            Config.decryptionMode = true;
+            require(!ChunkGroupVisibility.allows(shape, 0, 0, 64, 64),
+                    "decryption mode must hide entities outside the active group");
+            require(ChunkGroupVisibility.allows(shape, 0, 0, 64, 0),
+                    "decryption mode must still render entities inside the active group");
         } finally {
-            Config.legacyRegionBoundary = previous;
+            Config.legacyRegionBoundary = previousLegacy;
+            Config.decryptionMode = previousDecryption;
         }
         require(ChunkGroupVisibility.allows(null, 0, 0, 9_999, 9_999),
                 "without an authoritative group snapshot, normal entity rendering remains available");

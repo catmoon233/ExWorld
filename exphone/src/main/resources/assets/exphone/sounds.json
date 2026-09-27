@@ -1,0 +1,6 @@
+{
+  "phone_click": { "sounds": [{ "name": "exphone:phone/click", "volume": 0.55 }] },
+  "phone_page": { "sounds": [{ "name": "exphone:phone/page", "volume": 0.5 }] },
+  "phone_unlock": { "sounds": [{ "name": "exphone:phone/unlock", "volume": 0.6 }] },
+  "phone_send": { "sounds": [{ "name": "exphone:phone/send", "volume": 0.55 }] }
+}
